@@ -5,8 +5,8 @@ import { TaskItem } from '@/components/TaskItem'
 import { AddTaskForm } from '@/components/AddTaskForm'
 
 export const IdeasView: React.FC = () => {
-  const { tasks } = useAppStore()
-  const { updateTask, deleteTask, loadAllData } = useDatabase()
+  const { tasks, setTasks } = useAppStore()
+  const { updateTask, deleteTask } = useDatabase()
   const [draggedTaskId, setDraggedTaskId] = useState<string | null>(null)
   const [dragOverIndex, setDragOverIndex] = useState<number | null>(null)
   
@@ -51,36 +51,41 @@ export const IdeasView: React.FC = () => {
     const draggedIndex = ideasList.findIndex(t => t.id === draggedTaskId)
     if (draggedIndex === dropIndex) return
 
-    // Пересчитываем order_index для всех идей
+    // 🔥 ОПТИМИСТИЧНОЕ ОБНОВЛЕНИЕ: Сначала обновляем UI
     const reorderedIdeas = [...ideasList]
     const [movedIdea] = reorderedIdeas.splice(draggedIndex, 1)
     reorderedIdeas.splice(dropIndex, 0, movedIdea)
 
-    const updates = reorderedIdeas.map((idea, index) => ({
-      id: idea.id,
+    const reorderedWithIndex = reorderedIdeas.map((idea, index) => ({
+      ...idea,
       order_index: index
     }))
 
-    console.log('Reordering ideas:', updates)
+    // Сразу обновляем UI (оптимистично)
+    const updatedTasks = tasks.map(task => {
+      const reorderedIdea = reorderedWithIndex.find(ri => ri.id === task.id)
+      return reorderedIdea ? { ...task, order_index: reorderedIdea.order_index } : task
+    })
+    setTasks(updatedTasks)
 
-    // Обновляем в базе данных
+    console.log('Reordering ideas optimistically:', reorderedWithIndex.map(i => ({ id: i.id, order_index: i.order_index })))
+
+    // Затем обновляем в БД (в фоне)
     try {
-      for (const update of updates) {
-        await updateTask(update.id, { order_index: update.order_index })
-      }
-      console.log('Successfully reordered ideas')
+      const updatePromises = reorderedWithIndex.map(idea => 
+        updateTask(idea.id, { order_index: idea.order_index })
+      )
       
-      // 🔥 КЛЮЧЕВОЕ ИСПРАВЛЕНИЕ: Перезагружаем данные из БД
-      await loadAllData()
-      console.log('Data reloaded after reordering')
+      await Promise.all(updatePromises)
+      console.log('Successfully reordered ideas in database')
       
     } catch (error) {
-      console.error('Failed to reorder ideas:', error)
+      console.error('Failed to reorder ideas in database:', error)
     }
 
     setDraggedTaskId(null)
     setDragOverIndex(null)
-  }, [draggedTaskId, ideasList, updateTask, loadAllData])
+  }, [draggedTaskId, ideasList, tasks, setTasks, updateTask])
 
   return (
     <div className="space-y-6">

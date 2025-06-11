@@ -3,8 +3,8 @@ import { Task, RecurringTask, TaskCategory } from '@/types'
 
 interface TaskCompletion {
   id: string
-  task_id?: string
-  recurring_task_id?: string
+  task_id?: string | null
+  recurring_task_id?: string | null
   date: string
   user_id: string
   created_at: string
@@ -27,15 +27,15 @@ interface AppState {
   selectedDate: string
   setSelectedDate: (date: string) => void
   
-  // Tasks - ✅ ТОЛЬКО setters, без бизнес-логики
+  // ✅ Tasks - ТОЛЬКО setters, без бизнес-логики
   tasks: Task[]
   setTasks: (tasks: Task[]) => void
   
-  // Recurring tasks - ✅ ТОЛЬКО setters
+  // ✅ Recurring tasks - ТОЛЬКО setters
   recurringTasks: RecurringTask[]
   setRecurringTasks: (tasks: RecurringTask[]) => void
   
-  // Task completions - ✅ ТОЛЬКО setters
+  // ✅ Task completions - ТОЛЬКО setters
   taskCompletions: TaskCompletion[]
   setTaskCompletions: (completions: TaskCompletion[]) => void
   

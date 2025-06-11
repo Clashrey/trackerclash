@@ -1,8 +1,8 @@
-import React, { useState } from 'react'
+import React, { useState, useCallback } from 'react'
 import { useAppStore } from '@/store'
 import { useDatabase } from '@/hooks/useDatabase'
 import { RecurringTask } from '@/types'
-import { Plus, X, Calendar, Clock } from 'lucide-react'
+import { Plus, X, Clock, ChevronUp, ChevronDown } from 'lucide-react'
 
 const daysOfWeek = [
   { id: 0, label: 'Вс', fullLabel: 'Воскресенье' },
@@ -16,7 +16,7 @@ const daysOfWeek = [
 
 export const RecurringView: React.FC = () => {
   const { recurringTasks, userId } = useAppStore()
-  const { addRecurringTask, deleteRecurringTask } = useDatabase()
+  const { addRecurringTask, deleteRecurringTask, updateRecurringTask } = useDatabase()
   const [isAdding, setIsAdding] = useState(false)
   const [newTask, setNewTask] = useState({
     title: '',
@@ -24,16 +24,27 @@ export const RecurringView: React.FC = () => {
     days_of_week: [] as number[]
   })
 
+  // Сортируем задачи по order_index
+  const sortedTasks = [...recurringTasks].sort((a, b) => {
+    const aOrder = 'order_index' in a ? a.order_index || 0 : 0
+    const bOrder = 'order_index' in b ? b.order_index || 0 : 0
+    return aOrder - bOrder
+  })
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     
     if (!newTask.title.trim() || !userId) return
+
+    // Получаем максимальный order_index и добавляем новую задачу в конец
+    const maxOrder = Math.max(...sortedTasks.map(t => ('order_index' in t ? t.order_index || 0 : 0)), -1)
 
     await addRecurringTask({
       user_id: userId,
       title: newTask.title.trim(),
       frequency: newTask.frequency,
       days_of_week: newTask.frequency === 'weekly' ? newTask.days_of_week : undefined,
+      order_index: maxOrder + 1,
     })
 
     setNewTask({
@@ -47,6 +58,38 @@ export const RecurringView: React.FC = () => {
   const handleDelete = async (id: string) => {
     await deleteRecurringTask(id)
   }
+
+  const handleMoveUp = useCallback(async (taskId: string) => {
+    const taskIndex = sortedTasks.findIndex(t => t.id === taskId)
+    if (taskIndex <= 0) return
+
+    const task = sortedTasks[taskIndex]
+    const prevTask = sortedTasks[taskIndex - 1]
+
+    // Меняем order_index местами
+    await Promise.all([
+      updateRecurringTask(task.id, { order_index: prevTask.order_index || 0 }),
+      updateRecurringTask(prevTask.id, { order_index: task.order_index || 0 })
+    ])
+
+    console.log(`Moved recurring task ${taskId} up`)
+  }, [sortedTasks, updateRecurringTask])
+
+  const handleMoveDown = useCallback(async (taskId: string) => {
+    const taskIndex = sortedTasks.findIndex(t => t.id === taskId)
+    if (taskIndex >= sortedTasks.length - 1) return
+
+    const task = sortedTasks[taskIndex]
+    const nextTask = sortedTasks[taskIndex + 1]
+
+    // Меняем order_index местами
+    await Promise.all([
+      updateRecurringTask(task.id, { order_index: nextTask.order_index || 0 }),
+      updateRecurringTask(nextTask.id, { order_index: task.order_index || 0 })
+    ])
+
+    console.log(`Moved recurring task ${taskId} down`)
+  }, [sortedTasks, updateRecurringTask])
 
   const toggleDay = (dayId: number) => {
     setNewTask(prev => ({
@@ -76,37 +119,59 @@ export const RecurringView: React.FC = () => {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <h2 className="text-2xl font-bold">🔄 Регулярные задачи</h2>
-        <span className="text-sm text-gray-500">
+        <span className="text-sm text-gray-500 bg-gray-100 px-3 py-1 rounded-full">
           {recurringTasks.length} {recurringTasks.length === 1 ? 'задача' : 'задач'}
         </span>
       </div>
 
-      <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+      <div className="bg-blue-50 border border-blue-200 rounded-xl p-4">
         <div className="flex items-start space-x-2">
           <div className="text-blue-600 mt-0.5">ℹ️</div>
           <div className="text-sm text-blue-800">
             <p className="font-medium mb-1">Как работают регулярные задачи:</p>
-            <p>Регулярные задачи автоматически появляются во вкладке "Сегодня" согласно расписанию. Их можно перетаскивать между собой для изменения порядка.</p>
+            <p>Регулярные задачи автоматически появляются во вкладке "Сегодня" согласно расписанию. Используйте стрелочки ⬆️⬇️ для настройки порядка их появления.</p>
           </div>
         </div>
       </div>
 
       <div className="space-y-3">
-        {recurringTasks.length === 0 ? (
-          <div className="text-center py-12 text-gray-500">
+        {sortedTasks.length === 0 ? (
+          <div className="text-center py-12 text-gray-500 bg-gray-50 rounded-xl border-2 border-dashed border-gray-200">
             <div className="text-4xl mb-4">🔄</div>
-            <p className="text-lg mb-2">Регулярных задач пока нет</p>
+            <p className="text-lg font-medium mb-2">Регулярных задач пока нет</p>
             <p className="text-sm">Создайте задачи, которые повторяются каждый день или в определенные дни недели</p>
           </div>
         ) : (
-          recurringTasks.map((task) => (
+          sortedTasks.map((task, index) => (
             <div
               key={task.id}
-              className="flex items-center justify-between p-4 rounded-lg border bg-white"
+              className="flex items-center gap-4 p-4 rounded-xl border bg-white hover:border-blue-300 hover:shadow-md shadow-sm transition-all"
             >
+              {/* Move Buttons */}
+              {sortedTasks.length > 1 && (
+                <div className="flex flex-col gap-1">
+                  <button
+                    onClick={() => handleMoveUp(task.id)}
+                    disabled={index === 0}
+                    className="p-1 rounded hover:bg-gray-100 text-gray-400 hover:text-gray-600 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+                    title="Переместить вверх"
+                  >
+                    <ChevronUp size={14} />
+                  </button>
+                  <button
+                    onClick={() => handleMoveDown(task.id)}
+                    disabled={index === sortedTasks.length - 1}
+                    className="p-1 rounded hover:bg-gray-100 text-gray-400 hover:text-gray-600 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+                    title="Переместить вниз"
+                  >
+                    <ChevronDown size={14} />
+                  </button>
+                </div>
+              )}
+
               <div className="flex-1">
-                <h3 className="font-medium">{task.title}</h3>
-                <div className="flex items-center space-x-4 mt-2 text-sm text-gray-500">
+                <h3 className="font-semibold text-gray-900 text-base">{task.title}</h3>
+                <div className="flex items-center space-x-4 mt-2 text-sm text-gray-600">
                   <div className="flex items-center space-x-1">
                     <Clock className="w-4 h-4" />
                     <span>{getFrequencyText(task)}</span>
@@ -116,7 +181,8 @@ export const RecurringView: React.FC = () => {
               
               <button
                 onClick={() => handleDelete(task.id)}
-                className="p-2 rounded-md hover:bg-red-100 text-red-600 transition-colors"
+                className="p-2.5 rounded-lg bg-red-100 text-red-700 hover:bg-red-200 border border-red-200 transition-all"
+                title="Удалить регулярную задачу"
               >
                 <X className="w-4 h-4" />
               </button>
@@ -126,23 +192,23 @@ export const RecurringView: React.FC = () => {
       </div>
 
       {isAdding ? (
-        <form onSubmit={handleSubmit} className="space-y-4 p-4 border rounded-lg bg-white">
+        <form onSubmit={handleSubmit} className="space-y-4 p-6 border rounded-xl bg-white shadow-sm">
           <div>
-            <label className="block text-sm font-medium mb-2">Название задачи</label>
+            <label className="block text-sm font-medium mb-2 text-gray-700">Название задачи</label>
             <input
               type="text"
               value={newTask.title}
               onChange={(e) => setNewTask(prev => ({ ...prev, title: e.target.value }))}
               placeholder="Название регулярной задачи..."
-              className="w-full px-3 py-2 border border-gray-300 rounded-md bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              className="w-full px-4 py-3 border border-gray-300 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all"
               autoFocus
             />
           </div>
 
           <div>
-            <label className="block text-sm font-medium mb-2">Частота</label>
-            <div className="space-y-2">
-              <label className="flex items-center space-x-2">
+            <label className="block text-sm font-medium mb-3 text-gray-700">Частота</label>
+            <div className="space-y-3">
+              <label className="flex items-center space-x-3 cursor-pointer">
                 <input
                   type="radio"
                   value="daily"
@@ -152,12 +218,12 @@ export const RecurringView: React.FC = () => {
                     frequency: e.target.value as 'daily' | 'weekly',
                     days_of_week: []
                   }))}
-                  className="text-blue-600"
+                  className="text-blue-600 focus:ring-blue-500"
                 />
-                <span>Ежедневно</span>
+                <span className="text-sm">Ежедневно</span>
               </label>
               
-              <label className="flex items-center space-x-2">
+              <label className="flex items-center space-x-3 cursor-pointer">
                 <input
                   type="radio"
                   value="weekly"
@@ -166,26 +232,26 @@ export const RecurringView: React.FC = () => {
                     ...prev, 
                     frequency: e.target.value as 'daily' | 'weekly'
                   }))}
-                  className="text-blue-600"
+                  className="text-blue-600 focus:ring-blue-500"
                 />
-                <span>По дням недели</span>
+                <span className="text-sm">По дням недели</span>
               </label>
             </div>
           </div>
 
           {newTask.frequency === 'weekly' && (
             <div>
-              <label className="block text-sm font-medium mb-2">Дни недели</label>
+              <label className="block text-sm font-medium mb-3 text-gray-700">Дни недели</label>
               <div className="flex flex-wrap gap-2">
                 {daysOfWeek.map((day) => (
                   <button
                     key={day.id}
                     type="button"
                     onClick={() => toggleDay(day.id)}
-                    className={`px-3 py-1 text-sm rounded-md border transition-colors ${
+                    className={`px-4 py-2 text-sm rounded-lg border transition-all ${
                       newTask.days_of_week.includes(day.id)
-                        ? 'bg-blue-600 text-white border-blue-600'
-                        : 'bg-white border-gray-300 hover:bg-gray-50'
+                        ? 'bg-blue-600 text-white border-blue-600 shadow-md'
+                        : 'bg-white border-gray-300 hover:bg-gray-50 text-gray-700'
                     }`}
                   >
                     {day.label}
@@ -195,11 +261,11 @@ export const RecurringView: React.FC = () => {
             </div>
           )}
 
-          <div className="flex space-x-2">
+          <div className="flex space-x-3 pt-2">
             <button
               type="submit"
               disabled={!newTask.title.trim() || (newTask.frequency === 'weekly' && newTask.days_of_week.length === 0)}
-              className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
+              className="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all font-medium"
             >
               Создать
             </button>
@@ -209,7 +275,7 @@ export const RecurringView: React.FC = () => {
                 setIsAdding(false)
                 setNewTask({ title: '', frequency: 'daily', days_of_week: [] })
               }}
-              className="px-4 py-2 border border-gray-300 rounded-md hover:bg-gray-50"
+              className="px-6 py-3 border border-gray-300 rounded-lg hover:bg-gray-50 transition-all font-medium"
             >
               Отмена
             </button>
@@ -218,13 +284,12 @@ export const RecurringView: React.FC = () => {
       ) : (
         <button
           onClick={() => setIsAdding(true)}
-          className="w-full flex items-center justify-center space-x-2 p-4 border-2 border-dashed border-gray-300 rounded-lg hover:border-gray-400 transition-colors text-gray-500 hover:text-gray-700"
+          className="w-full flex items-center justify-center space-x-2 p-6 border-2 border-dashed border-gray-300 rounded-xl hover:border-blue-400 hover:bg-blue-50 transition-all text-gray-500 hover:text-blue-600"
         >
-          <Plus className="w-4 h-4" />
-          <span>Добавить регулярную задачу</span>
+          <Plus className="w-5 h-5" />
+          <span className="font-medium">Добавить регулярную задачу</span>
         </button>
       )}
     </div>
   )
 }
-

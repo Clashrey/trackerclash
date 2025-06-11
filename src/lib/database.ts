@@ -36,26 +36,38 @@ export interface TaskCompletion {
 class DatabaseService {
   private async getCurrentUserId(): Promise<string | null> {
     const apiKey = localStorage.getItem('tracker_api_key')
+    console.log('🔍 getCurrentUserId - API Key from localStorage:', apiKey)
     if (!apiKey) return null
 
     try {
       const { data, error } = await supabase
         .from('users')
-        .select('user_id')  // ✅ Используем user_id поле, как и раньше
+        .select('id')  // ✅ ИСПРАВЛЕНО: возвращаем id вместо user_id
         .eq('api_key', apiKey)
-        .single()
 
-      if (error || !data) {
-        console.error('User not found:', error)
-        console.error('API Key:', apiKey)
-        console.error('Error details:', error)
+      console.log('🔍 Supabase query result:', { data, error })
+
+      if (error) {
+        console.error('❌ Database error:', error)
         return null
       }
 
-      console.log('Found user_id:', data.user_id) // 🔍 Для отладки
-      return data.user_id
+      if (!data || data.length === 0) {
+        console.error('❌ No user found for API key:', apiKey)
+        return null
+      }
+
+      if (data.length > 1) {
+        console.error('❌ Multiple users found for API key:', apiKey)
+        return null
+      }
+
+      const user = data[0]
+      console.log('✅ Found user:', user)
+      console.log('✅ Returning id:', user.id)  // ✅ ИСПРАВЛЕНО: возвращаем id
+      return user.id  // ✅ ИСПРАВЛЕНО: возвращаем id
     } catch (error) {
-      console.error('Failed to get user ID:', error)
+      console.error('❌ Exception in getCurrentUserId:', error)
       return null
     }
   }
@@ -287,6 +299,7 @@ class DatabaseService {
     date: string
   ): Promise<TaskCompletion | null> {
     const userId = await this.getCurrentUserId()
+    console.log('🔍 addTaskCompletion - userId:', userId) // Отладка
     if (!userId) return null
 
     // Проверяем, что передан либо task_id, либо recurring_task_id
@@ -300,26 +313,31 @@ class DatabaseService {
       return null
     }
 
+    const insertData = {
+      task_id: taskId,
+      recurring_task_id: recurringTaskId,
+      date: date,
+      user_id: userId
+    }
+    console.log('🔍 Inserting task completion:', insertData) // Отладка
+
     try {
       const { data, error } = await supabase
         .from('task_completions')
-        .insert([{
-          task_id: taskId,
-          recurring_task_id: recurringTaskId,
-          date: date,
-          user_id: userId
-        }])
+        .insert([insertData])
         .select()
         .single()
 
       if (error) {
-        console.error('Error adding task completion:', error)
+        console.error('❌ Error adding task completion:', error)
+        console.error('❌ Insert data was:', insertData)
         return null
       }
 
+      console.log('✅ Task completion added:', data) // Отладка
       return data
     } catch (error) {
-      console.error('Error in addTaskCompletion:', error)
+      console.error('❌ Exception in addTaskCompletion:', error)
       return null
     }
   }

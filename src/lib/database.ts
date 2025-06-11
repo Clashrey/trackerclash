@@ -1,4 +1,4 @@
-import { supabase, setUserContext } from './supabase'
+import { supabase } from './supabase'
 
 export interface Task {
   id: string
@@ -32,21 +32,15 @@ export interface TaskCompletion {
 }
 
 class DatabaseService {
-  private getCurrentUser() {
+  private async getCurrentUserId(): Promise<string | null> {
     const apiKey = localStorage.getItem('tracker_api_key')
-    return apiKey ? { api_key: apiKey } : null
-  }
-
-  private async ensureUserContext() {
-    const user = this.getCurrentUser()
-    if (!user) return null
+    if (!apiKey) return null
 
     try {
-      // Получаем userId по API ключу
       const { data, error } = await supabase
         .from('users')
         .select('user_id')
-        .eq('api_key', user.api_key)
+        .eq('api_key', apiKey)
         .single()
 
       if (error || !data) {
@@ -54,24 +48,23 @@ class DatabaseService {
         return null
       }
 
-      // Устанавливаем контекст для RLS
-      await setUserContext(data.user_id)
       return data.user_id
     } catch (error) {
-      console.error('Failed to set user context:', error)
+      console.error('Failed to get user ID:', error)
       return null
     }
   }
 
   // Tasks
   async getTasks(): Promise<Task[]> {
-    const userId = await this.ensureUserContext()
+    const userId = await this.getCurrentUserId()
     if (!userId) return []
 
     try {
       const { data, error } = await supabase
         .from('tasks')
         .select('*')
+        .eq('user_id', userId)
         .order('order_index')
 
       if (error) {
@@ -87,7 +80,7 @@ class DatabaseService {
   }
 
   async addTask(task: Omit<Task, 'id' | 'user_id' | 'created_at' | 'updated_at'>): Promise<Task | null> {
-    const userId = await this.ensureUserContext()
+    const userId = await this.getCurrentUserId()
     if (!userId) return null
 
     try {
@@ -113,13 +106,15 @@ class DatabaseService {
   }
 
   async updateTask(id: string, updates: Partial<Task>): Promise<Task | null> {
-    await this.ensureUserContext()
+    const userId = await this.getCurrentUserId()
+    if (!userId) return null
 
     try {
       const { data, error } = await supabase
         .from('tasks')
         .update(updates)
         .eq('id', id)
+        .eq('user_id', userId)
         .select()
         .single()
 
@@ -136,13 +131,15 @@ class DatabaseService {
   }
 
   async deleteTask(id: string): Promise<boolean> {
-    await this.ensureUserContext()
+    const userId = await this.getCurrentUserId()
+    if (!userId) return false
 
     try {
       const { error } = await supabase
         .from('tasks')
         .delete()
         .eq('id', id)
+        .eq('user_id', userId)
 
       if (error) {
         console.error('Error deleting task:', error)
@@ -158,13 +155,14 @@ class DatabaseService {
 
   // Recurring Tasks
   async getRecurringTasks(): Promise<RecurringTask[]> {
-    const userId = await this.ensureUserContext()
+    const userId = await this.getCurrentUserId()
     if (!userId) return []
 
     try {
       const { data, error } = await supabase
         .from('recurring_tasks')
         .select('*')
+        .eq('user_id', userId)
         .order('created_at')
 
       if (error) {
@@ -180,7 +178,7 @@ class DatabaseService {
   }
 
   async addRecurringTask(task: Omit<RecurringTask, 'id' | 'user_id' | 'created_at' | 'updated_at'>): Promise<RecurringTask | null> {
-    const userId = await this.ensureUserContext()
+    const userId = await this.getCurrentUserId()
     if (!userId) return null
 
     try {
@@ -206,13 +204,15 @@ class DatabaseService {
   }
 
   async updateRecurringTask(id: string, updates: Partial<RecurringTask>): Promise<RecurringTask | null> {
-    await this.ensureUserContext()
+    const userId = await this.getCurrentUserId()
+    if (!userId) return null
 
     try {
       const { data, error } = await supabase
         .from('recurring_tasks')
         .update(updates)
         .eq('id', id)
+        .eq('user_id', userId)
         .select()
         .single()
 
@@ -229,13 +229,15 @@ class DatabaseService {
   }
 
   async deleteRecurringTask(id: string): Promise<boolean> {
-    await this.ensureUserContext()
+    const userId = await this.getCurrentUserId()
+    if (!userId) return false
 
     try {
       const { error } = await supabase
         .from('recurring_tasks')
         .delete()
         .eq('id', id)
+        .eq('user_id', userId)
 
       if (error) {
         console.error('Error deleting recurring task:', error)
@@ -251,13 +253,14 @@ class DatabaseService {
 
   // Task Completions
   async getTaskCompletions(): Promise<TaskCompletion[]> {
-    const userId = await this.ensureUserContext()
+    const userId = await this.getCurrentUserId()
     if (!userId) return []
 
     try {
       const { data, error } = await supabase
         .from('task_completions')
         .select('*')
+        .eq('user_id', userId)
         .order('date', { ascending: false })
 
       if (error) {
@@ -265,7 +268,6 @@ class DatabaseService {
         return []
       }
 
-      // Преобразуем данные в ожидаемый формат
       return (data || []).map(item => ({
         id: item.id,
         task_title: item.task_title || '',
@@ -281,7 +283,7 @@ class DatabaseService {
   }
 
   async addTaskCompletion(completion: Omit<TaskCompletion, 'id' | 'user_id' | 'created_at'>): Promise<TaskCompletion | null> {
-    const userId = await this.ensureUserContext()
+    const userId = await this.getCurrentUserId()
     if (!userId) return null
 
     try {
@@ -316,7 +318,8 @@ class DatabaseService {
   }
 
   async removeTaskCompletion(taskTitle: string, date: string): Promise<boolean> {
-    await this.ensureUserContext()
+    const userId = await this.getCurrentUserId()
+    if (!userId) return false
 
     try {
       const { error } = await supabase
@@ -324,6 +327,7 @@ class DatabaseService {
         .delete()
         .eq('task_title', taskTitle)
         .eq('date', date)
+        .eq('user_id', userId)
 
       if (error) {
         console.error('Error removing task completion:', error)

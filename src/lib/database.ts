@@ -41,15 +41,18 @@ class DatabaseService {
     try {
       const { data, error } = await supabase
         .from('users')
-        .select('user_id')
+        .select('user_id')  // ✅ Используем user_id поле, как и раньше
         .eq('api_key', apiKey)
         .single()
 
       if (error || !data) {
         console.error('User not found:', error)
+        console.error('API Key:', apiKey)
+        console.error('Error details:', error)
         return null
       }
 
+      console.log('Found user_id:', data.user_id) // 🔍 Для отладки
       return data.user_id
     } catch (error) {
       console.error('Failed to get user ID:', error)

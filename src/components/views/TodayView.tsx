@@ -51,20 +51,26 @@ export function TodayView() {
     // Проверяем, это регулярная задача или обычная
     const regularTask = todayRecurringTasks.find(t => t.id === taskId)
     if (regularTask) {
-      // Регулярная задача
+      // ✅ ИСПРАВЛЕНО: Регулярная задача
       if (regularTask.completed) {
-        await removeTaskCompletion(taskId, selectedDate)
+        // Удаляем completion для регулярной задачи
+        await removeTaskCompletion(null, taskId, selectedDate)
       } else {
-        await addTaskCompletion({
-          task_id: taskId,
-          recurring_task_id: taskId,
-          date: selectedDate
-        })
+        // Добавляем completion для регулярной задачи
+        await addTaskCompletion(null, taskId, selectedDate)
       }
     } else {
-      // Обычная задача
+      // ✅ ИСПРАВЛЕНО: Обычная задача
       const task = todayTasks.find(t => t.id === taskId)
       if (task) {
+        if (task.completed) {
+          // Удаляем completion для обычной задачи
+          await removeTaskCompletion(taskId, null, selectedDate)
+        } else {
+          // Добавляем completion для обычной задачи
+          await addTaskCompletion(taskId, null, selectedDate)
+        }
+        // Также обновляем поле completed в самой задаче
         await updateTask(taskId, { completed: !task.completed })
       }
     }

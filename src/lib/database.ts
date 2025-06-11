@@ -17,6 +17,7 @@ export interface RecurringTask {
   title: string
   frequency: 'daily' | 'weekly' | 'custom'
   days_of_week?: number[]
+  order_index?: number // Добавляем поддержку order_index
   user_id: string
   created_at: string
   updated_at: string
@@ -163,7 +164,7 @@ class DatabaseService {
         .from('recurring_tasks')
         .select('*')
         .eq('user_id', userId)
-        .order('created_at')
+        .order('order_index')
 
       if (error) {
         console.error('Error fetching recurring tasks:', error)

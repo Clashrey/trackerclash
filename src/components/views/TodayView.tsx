@@ -8,7 +8,7 @@ import { DateNavigation } from '../DateNavigation'
 import { Task, RecurringTask } from '../../lib/database'
 
 export function TodayView() {
-  const { tasks, recurringTasks, selectedDate, taskCompletions } = useAppStore()
+  const { tasks, recurringTasks, selectedDate, taskCompletions, setTasks } = useAppStore()
   const { updateTask, deleteTask, addTaskCompletion, removeTaskCompletion } = useDatabase()
   
   const [draggedTaskId, setDraggedTaskId] = useState<string | null>(null)
@@ -74,12 +74,19 @@ export function TodayView() {
     await deleteTask(taskId)
   }, [deleteTask])
 
-  // Drag and Drop handlers
+  // Drag and Drop handlers - ТОЛЬКО для обычных задач
   const handleDragStart = useCallback((e: React.DragEvent, taskId: string) => {
+    // Проверяем, что это НЕ регулярная задача
+    const task = allTasks.find(t => t.id === taskId)
+    if (task && 'isRecurring' in task && task.isRecurring) {
+      e.preventDefault()
+      return
+    }
+    
     setDraggedTaskId(taskId)
     e.dataTransfer.effectAllowed = 'move'
     e.dataTransfer.setData('text/plain', taskId)
-  }, [])
+  }, [allTasks])
 
   const handleDragEnd = useCallback(() => {
     setDraggedTaskId(null)
@@ -103,33 +110,44 @@ export function TodayView() {
     const draggedIndex = allTasks.findIndex(t => t.id === draggedTaskId)
     if (draggedIndex === dropIndex) return
 
-    // Пересчитываем order_index для всех задач
+    // 🔥 ОПТИМИСТИЧНОЕ ОБНОВЛЕНИЕ: Сначала обновляем UI
     const reorderedTasks = [...allTasks]
     const [movedTask] = reorderedTasks.splice(draggedIndex, 1)
     reorderedTasks.splice(dropIndex, 0, movedTask)
 
-    // ✅ ИСПРАВЛЕННАЯ ЛОГИКА: Получаем только обычные задачи и правильно пересчитываем order_index
     const regularTasks = reorderedTasks.filter(task => !('isRecurring' in task))
-    const updates = regularTasks.map((task, index) => ({
-      id: task.id,
-      order_index: index // Теперь индекс правильный
+    const reorderedRegularTasks = regularTasks.map((task, index) => ({
+      ...task,
+      order_index: index
     }))
 
-    console.log('Reordering tasks:', updates) // Для отладки
+    // Сразу обновляем UI (оптимистично)
+    const updatedTasks = tasks.map(task => {
+      const reorderedTask = reorderedRegularTasks.find(rt => rt.id === task.id)
+      return reorderedTask ? { ...task, order_index: reorderedTask.order_index } : task
+    })
+    setTasks(updatedTasks)
 
-    // Обновляем в базе данных
+    console.log('Reordering tasks optimistically:', reorderedRegularTasks.map(t => ({ id: t.id, order_index: t.order_index })))
+
+    // Затем обновляем в БД (в фоне)
     try {
-      for (const update of updates) {
-        await updateTask(update.id, { order_index: update.order_index })
-      }
-      console.log('Successfully reordered tasks') // Для отладки
+      const updatePromises = reorderedRegularTasks.map(task => 
+        updateTask(task.id, { order_index: task.order_index })
+      )
+      
+      await Promise.all(updatePromises)
+      console.log('Successfully reordered tasks in database')
+      
     } catch (error) {
-      console.error('Failed to reorder tasks:', error)
+      console.error('Failed to reorder tasks in database:', error)
+      // В случае ошибки - перезагружаем данные из БД
+      // await loadAllData()
     }
 
     setDraggedTaskId(null)
     setDragOverIndex(null)
-  }, [draggedTaskId, allTasks, updateTask])
+  }, [draggedTaskId, allTasks, tasks, setTasks, updateTask])
 
   return (
     <div className="space-y-6">
@@ -151,30 +169,34 @@ export function TodayView() {
 
         {/* Drop Zone */}
         <div className="space-y-2">
-          {allTasks.map((task, index) => (
-            <div key={task.id}>
-              {/* Drop indicator */}
-              {dragOverIndex === index && draggedTaskId !== task.id && (
-                <div className="h-0.5 bg-blue-500 rounded-full mx-4" />
-              )}
-              
-              <div
-                onDragOver={(e) => handleDragOver(e, index)}
-                onDrop={(e) => handleDrop(e, index)}
-              >
-                <TaskItem
-                  task={task}
-                  onToggle={handleToggleTask}
-                  onDelete={handleDeleteTask}
-                  onDragStart={handleDragStart}
-                  onDragEnd={handleDragEnd}
-                  isDragging={draggedTaskId === task.id}
-                />
+          {allTasks.map((task, index) => {
+            const isRegularTask = 'isRecurring' in task && task.isRecurring
+            
+            return (
+              <div key={task.id}>
+                {/* Drop indicator - только для обычных задач */}
+                {!isRegularTask && dragOverIndex === index && draggedTaskId !== task.id && (
+                  <div className="h-0.5 bg-blue-500 rounded-full mx-4" />
+                )}
+                
+                <div
+                  onDragOver={!isRegularTask ? (e) => handleDragOver(e, index) : undefined}
+                  onDrop={!isRegularTask ? (e) => handleDrop(e, index) : undefined}
+                >
+                  <TaskItem
+                    task={task}
+                    onToggle={handleToggleTask}
+                    onDelete={handleDeleteTask}
+                    onDragStart={!isRegularTask ? handleDragStart : undefined}
+                    onDragEnd={!isRegularTask ? handleDragEnd : undefined}
+                    isDragging={draggedTaskId === task.id}
+                  />
+                </div>
               </div>
-            </div>
-          ))}
+            )
+          })}
           
-          {/* Final drop zone */}
+          {/* Final drop zone - только если есть перетаскиваемая задача */}
           {draggedTaskId && (
             <div
               className="h-8 border-2 border-dashed border-blue-300 rounded-lg flex items-center justify-center text-blue-500 text-sm"

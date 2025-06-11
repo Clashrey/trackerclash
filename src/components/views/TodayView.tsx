@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useEffect } from 'react'
+import React, { useCallback } from 'react'
 import { useAppStore } from '../../store'
 import { useDatabase } from '../../hooks/useDatabase'
 import { AddTaskForm } from '../AddTaskForm'
@@ -10,52 +10,49 @@ import { Task, RecurringTask } from '../../lib/database'
 export function TodayView() {
   const { tasks, recurringTasks, selectedDate, taskCompletions, setTasks } = useAppStore()
   const { updateTask, deleteTask, addTaskCompletion, removeTaskCompletion } = useDatabase()
-  
-  const [draggedTaskId, setDraggedTaskId] = useState<string | null>(null)
-  const [dragOverIndex, setDragOverIndex] = useState<number | null>(null)
 
-  // Получаем задачи на сегодня
-  const todayTasks = tasks.filter(task => 
-    task.category === 'today' && task.date === selectedDate
-  )
+  // Получаем обычные задачи на сегодня (отсортированные)
+  const todayTasks = tasks
+    .filter(task => task.category === 'today' && task.date === selectedDate)
+    .sort((a, b) => a.order_index - b.order_index)
 
-  // Получаем регулярные задачи для сегодня
-  const todayRecurringTasks = recurringTasks.filter(recurringTask => {
-    if (recurringTask.frequency === 'daily') return true
-    if (recurringTask.frequency === 'weekly' && recurringTask.days_of_week) {
-      const dayOfWeek = new Date(selectedDate).getDay()
-      return recurringTask.days_of_week.includes(dayOfWeek)
-    }
-    return false
-  }).map(rt => ({
-    ...rt,
-    isRecurring: true as const,
-    completed: taskCompletions.some(tc => 
-      tc.recurring_task_id === rt.id && tc.date === selectedDate
-    ),
-    category: 'today' as const,
-    date: selectedDate,
-    order_index: -1 // Регулярные задачи всегда сверху
-  }))
-
-  // Объединяем все задачи и сортируем
-  const allTasks = [
-    ...todayRecurringTasks,
-    ...todayTasks
-  ].sort((a, b) => a.order_index - b.order_index)
+  // Получаем регулярные задачи для сегодня (отсортированные по порядку из вкладки "Регулярные")
+  const todayRecurringTasks = recurringTasks
+    .filter(recurringTask => {
+      if (recurringTask.frequency === 'daily') return true
+      if (recurringTask.frequency === 'weekly' && recurringTask.days_of_week) {
+        const dayOfWeek = new Date(selectedDate).getDay()
+        return recurringTask.days_of_week.includes(dayOfWeek)
+      }
+      return false
+    })
+    .sort((a, b) => {
+      // Сортируем по order_index если есть, иначе по дате создания
+      const aOrder = 'order_index' in a ? a.order_index : 0
+      const bOrder = 'order_index' in b ? b.order_index : 0
+      return aOrder - bOrder
+    })
+    .map(rt => ({
+      ...rt,
+      isRecurring: true as const,
+      completed: taskCompletions.some(tc => 
+        tc.recurring_task_id === rt.id && tc.date === selectedDate
+      ),
+      category: 'today' as const,
+      date: selectedDate,
+    }))
 
   // Подсчет прогресса
-  const totalTasks = allTasks.length
-  const completedTasks = allTasks.filter(task => task.completed).length
+  const totalTasks = todayTasks.length + todayRecurringTasks.length
+  const completedTasks = todayTasks.filter(t => t.completed).length + todayRecurringTasks.filter(t => t.completed).length
   const progress = totalTasks > 0 ? (completedTasks / totalTasks) * 100 : 0
 
   const handleToggleTask = useCallback(async (taskId: string) => {
-    const task = allTasks.find(t => t.id === taskId)
-    if (!task) return
-
-    if ('isRecurring' in task && task.isRecurring) {
+    // Проверяем, это регулярная задача или обычная
+    const regularTask = todayRecurringTasks.find(t => t.id === taskId)
+    if (regularTask) {
       // Регулярная задача
-      if (task.completed) {
+      if (regularTask.completed) {
         await removeTaskCompletion(taskId, selectedDate)
       } else {
         await addTaskCompletion({
@@ -66,88 +63,49 @@ export function TodayView() {
       }
     } else {
       // Обычная задача
-      await updateTask(taskId, { completed: !task.completed })
+      const task = todayTasks.find(t => t.id === taskId)
+      if (task) {
+        await updateTask(taskId, { completed: !task.completed })
+      }
     }
-  }, [allTasks, selectedDate, updateTask, addTaskCompletion, removeTaskCompletion])
+  }, [todayTasks, todayRecurringTasks, selectedDate, updateTask, addTaskCompletion, removeTaskCompletion])
 
   const handleDeleteTask = useCallback(async (taskId: string) => {
     await deleteTask(taskId)
   }, [deleteTask])
 
-  // Drag and Drop handlers - ТОЛЬКО для обычных задач
-  const handleDragStart = useCallback((e: React.DragEvent, taskId: string) => {
-    // Проверяем, что это НЕ регулярная задача
-    const task = allTasks.find(t => t.id === taskId)
-    if (task && 'isRecurring' in task && task.isRecurring) {
-      e.preventDefault()
-      return
-    }
-    
-    setDraggedTaskId(taskId)
-    e.dataTransfer.effectAllowed = 'move'
-    e.dataTransfer.setData('text/plain', taskId)
-  }, [allTasks])
+  // Функции для перемещения задач
+  const handleMoveTaskUp = useCallback(async (taskId: string) => {
+    const taskIndex = todayTasks.findIndex(t => t.id === taskId)
+    if (taskIndex <= 0) return
 
-  const handleDragEnd = useCallback(() => {
-    setDraggedTaskId(null)
-    setDragOverIndex(null)
-  }, [])
+    const task = todayTasks[taskIndex]
+    const prevTask = todayTasks[taskIndex - 1]
 
-  const handleDragOver = useCallback((e: React.DragEvent, index: number) => {
-    e.preventDefault()
-    e.dataTransfer.dropEffect = 'move'
-    setDragOverIndex(index)
-  }, [])
+    // Меняем order_index местами
+    await Promise.all([
+      updateTask(task.id, { order_index: prevTask.order_index }),
+      updateTask(prevTask.id, { order_index: task.order_index })
+    ])
 
-  const handleDrop = useCallback(async (e: React.DragEvent, dropIndex: number) => {
-    e.preventDefault()
-    
-    if (!draggedTaskId) return
+    console.log(`Moved task ${taskId} up`)
+  }, [todayTasks, updateTask])
 
-    const draggedTask = allTasks.find(t => t.id === draggedTaskId)
-    if (!draggedTask || 'isRecurring' in draggedTask) return // Не перетаскиваем регулярные задачи
+  const handleMoveTaskDown = useCallback(async (taskId: string) => {
+    const taskIndex = todayTasks.findIndex(t => t.id === taskId)
+    if (taskIndex >= todayTasks.length - 1) return
 
-    const draggedIndex = allTasks.findIndex(t => t.id === draggedTaskId)
-    if (draggedIndex === dropIndex) return
+    const task = todayTasks[taskIndex]
+    const nextTask = todayTasks[taskIndex + 1]
 
-    // 🔥 ОПТИМИСТИЧНОЕ ОБНОВЛЕНИЕ: Сначала обновляем UI
-    const reorderedTasks = [...allTasks]
-    const [movedTask] = reorderedTasks.splice(draggedIndex, 1)
-    reorderedTasks.splice(dropIndex, 0, movedTask)
+    // Меняем order_index местами
+    await Promise.all([
+      updateTask(task.id, { order_index: nextTask.order_index }),
+      updateTask(nextTask.id, { order_index: task.order_index })
+    ])
 
-    const regularTasks = reorderedTasks.filter(task => !('isRecurring' in task))
-    const reorderedRegularTasks = regularTasks.map((task, index) => ({
-      ...task,
-      order_index: index
-    }))
-
-    // Сразу обновляем UI (оптимистично)
-    const updatedTasks = tasks.map(task => {
-      const reorderedTask = reorderedRegularTasks.find(rt => rt.id === task.id)
-      return reorderedTask ? { ...task, order_index: reorderedTask.order_index } : task
-    })
-    setTasks(updatedTasks)
-
-    console.log('Reordering tasks optimistically:', reorderedRegularTasks.map(t => ({ id: t.id, order_index: t.order_index })))
-
-    // Затем обновляем в БД (в фоне)
-    try {
-      const updatePromises = reorderedRegularTasks.map(task => 
-        updateTask(task.id, { order_index: task.order_index })
-      )
-      
-      await Promise.all(updatePromises)
-      console.log('Successfully reordered tasks in database')
-      
-    } catch (error) {
-      console.error('Failed to reorder tasks in database:', error)
-      // В случае ошибки - перезагружаем данные из БД
-      // await loadAllData()
-    }
-
-    setDraggedTaskId(null)
-    setDragOverIndex(null)
-  }, [draggedTaskId, allTasks, tasks, setTasks, updateTask])
+    console.log(`Moved task ${taskId} down`)
+  }, [todayTasks, updateTask])
 
   return (
     <div className="space-y-6">
@@ -159,63 +117,86 @@ export function TodayView() {
         progress={progress} 
       />
 
-      <div className="space-y-4">
-        <h2 className="text-lg font-semibold text-gray-900">
+      <div className="space-y-6">
+        <h2 className="text-xl font-bold text-gray-900">
           Задачи на {new Date(selectedDate).toLocaleDateString('ru-RU', { 
             day: 'numeric', 
             month: 'long' 
           })}
         </h2>
 
-        {/* Drop Zone */}
-        <div className="space-y-2">
-          {allTasks.map((task, index) => {
-            const isRegularTask = 'isRecurring' in task && task.isRecurring
-            
-            return (
-              <div key={task.id}>
-                {/* Drop indicator - только для обычных задач */}
-                {!isRegularTask && dragOverIndex === index && draggedTaskId !== task.id && (
-                  <div className="h-0.5 bg-blue-500 rounded-full mx-4" />
-                )}
-                
-                <div
-                  onDragOver={!isRegularTask ? (e) => handleDragOver(e, index) : undefined}
-                  onDrop={!isRegularTask ? (e) => handleDrop(e, index) : undefined}
-                >
-                  <TaskItem
-                    task={task}
-                    onToggle={handleToggleTask}
-                    onDelete={handleDeleteTask}
-                    onDragStart={!isRegularTask ? handleDragStart : undefined}
-                    onDragEnd={!isRegularTask ? handleDragEnd : undefined}
-                    isDragging={draggedTaskId === task.id}
-                  />
-                </div>
-              </div>
-            )
-          })}
-          
-          {/* Final drop zone - только если есть перетаскиваемая задача */}
-          {draggedTaskId && (
-            <div
-              className="h-8 border-2 border-dashed border-blue-300 rounded-lg flex items-center justify-center text-blue-500 text-sm"
-              onDragOver={(e) => handleDragOver(e, allTasks.length)}
-              onDrop={(e) => handleDrop(e, allTasks.length)}
-            >
-              Перетащите сюда
+        {/* Регулярные задачи (закрепленные сверху) */}
+        {todayRecurringTasks.length > 0 && (
+          <div className="space-y-4">
+            <div className="flex items-center gap-2">
+              <h3 className="text-lg font-semibold text-gray-800">🔄 Регулярные задачи</h3>
+              <span className="text-sm text-gray-500 bg-blue-50 px-2 py-1 rounded-full">
+                {todayRecurringTasks.length}
+              </span>
             </div>
-          )}
+            <div className="space-y-3">
+              {todayRecurringTasks.map((task) => (
+                <TaskItem
+                  key={task.id}
+                  task={task}
+                  onToggle={handleToggleTask}
+                  onDelete={handleDeleteTask}
+                  showMoveButtons={false} // Регулярные задачи не перемещаются здесь
+                />
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Обычные задачи */}
+        <div className="space-y-4">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <h3 className="text-lg font-semibold text-gray-800">📝 Задачи на день</h3>
+              {todayTasks.length > 0 && (
+                <span className="text-sm text-gray-500 bg-gray-50 px-2 py-1 rounded-full">
+                  {todayTasks.length}
+                </span>
+              )}
+            </div>
+          </div>
+
+          <div className="space-y-3">
+            {todayTasks.length === 0 ? (
+              <div className="text-center py-8 text-gray-500 bg-gray-50 rounded-xl border-2 border-dashed border-gray-200">
+                <div className="text-3xl mb-2">📝</div>
+                <p className="text-base font-medium">Задач на день пока нет</p>
+                <p className="text-sm mt-1">Добавьте задачи, которые нужно выполнить сегодня</p>
+              </div>
+            ) : (
+              todayTasks.map((task, index) => (
+                <TaskItem
+                  key={task.id}
+                  task={task}
+                  onToggle={handleToggleTask}
+                  onDelete={handleDeleteTask}
+                  onMoveUp={handleMoveTaskUp}
+                  onMoveDown={handleMoveTaskDown}
+                  showMoveButtons={todayTasks.length > 1}
+                  isFirst={index === 0}
+                  isLast={index === todayTasks.length - 1}
+                />
+              ))
+            )}
+          </div>
         </div>
 
-        {allTasks.length === 0 && (
-          <div className="text-center py-8 text-gray-500">
-            Нет задач на сегодня
+        {/* Общая информация */}
+        {totalTasks === 0 && (
+          <div className="text-center py-12 text-gray-500">
+            <div className="text-4xl mb-4">✨</div>
+            <p className="text-lg font-medium mb-2">День свободен от задач</p>
+            <p className="text-sm">Добавьте задачи или наслаждайтесь отдыхом!</p>
           </div>
         )}
       </div>
 
-      <AddTaskForm category="today" />
+      <AddTaskForm category="today" placeholder="Добавить задачу на сегодня..." />
     </div>
   )
 }

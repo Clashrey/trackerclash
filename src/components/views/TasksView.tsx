@@ -6,7 +6,7 @@ import { AddTaskForm } from '@/components/AddTaskForm'
 
 export const TasksView: React.FC = () => {
   const { tasks } = useAppStore()
-  const { updateTask, deleteTask } = useDatabase()
+  const { updateTask, deleteTask, loadAllData } = useDatabase()
   const [draggedTaskId, setDraggedTaskId] = useState<string | null>(null)
   const [dragOverIndex, setDragOverIndex] = useState<number | null>(null)
   

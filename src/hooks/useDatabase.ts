@@ -43,20 +43,14 @@ export function useDatabase() {
   }
 
   const updateTask = async (id: string, updates: Parameters<typeof databaseService.updateTask>[1]) => {
-    console.log('🔍 updateTask called with:', { id, updates })
     const updatedTask = await databaseService.updateTask(id, updates)
-    console.log('🔍 Database returned updated task:', updatedTask)
     
     if (updatedTask) {
-      // ✅ Создаем полностью новый массив для принудительного rerending
+      // ✅ Просто обновляем состояние, БЕЗ перезагрузки
       const updatedTasks = tasks.map(t => 
         t.id === id ? { ...updatedTask } : { ...t }
       )
-      console.log('🔍 Setting new tasks array, length:', updatedTasks.length)
       setTasks(updatedTasks)
-      
-      // ✅ Принудительно перезагружаем данные для синхронизации
-      await loadAllData()
     }
     return updatedTask
   }
@@ -79,20 +73,14 @@ export function useDatabase() {
   }
 
   const updateRecurringTask = async (id: string, updates: Parameters<typeof databaseService.updateRecurringTask>[1]) => {
-    console.log('🔍 updateRecurringTask called with:', { id, updates })
     const updatedTask = await databaseService.updateRecurringTask(id, updates)
-    console.log('🔍 Database returned updated recurring task:', updatedTask)
     
     if (updatedTask) {
-      // ✅ Создаем полностью новый массив для принудительного rerending
+      // ✅ Просто обновляем состояние, БЕЗ перезагрузки
       const updatedTasks = recurringTasks.map(t => 
         t.id === id ? { ...updatedTask } : { ...t }
       )
-      console.log('🔍 Setting new recurring tasks array, length:', updatedTasks.length)
       setRecurringTasks(updatedTasks)
-      
-      // ✅ Принудительно перезагружаем данные для синхронизации
-      await loadAllData()
     }
     return updatedTask
   }
@@ -113,18 +101,12 @@ export function useDatabase() {
     recurringTaskId: string | null, 
     date: string
   ) => {
-    console.log('🔍 addTaskCompletion called with:', { taskId, recurringTaskId, date })
     const newCompletion = await databaseService.addTaskCompletion(taskId, recurringTaskId, date)
-    console.log('🔍 Database returned:', newCompletion)
     
     if (newCompletion) {
-      // ✅ Создаем полностью новый массив
+      // ✅ Просто обновляем состояние, БЕЗ перезагрузки
       const updatedCompletions = [...taskCompletions, { ...newCompletion }]
-      console.log('🔍 Setting new completions array, length:', updatedCompletions.length)
       setTaskCompletions(updatedCompletions)
-      
-      // ✅ Принудительно перезагружаем данные для синхронизации
-      await loadAllData()
     }
     return newCompletion
   }
@@ -134,28 +116,20 @@ export function useDatabase() {
     recurringTaskId: string | null, 
     date: string
   ) => {
-    console.log('🔍 removeTaskCompletion called with:', { taskId, recurringTaskId, date })
     const success = await databaseService.removeTaskCompletion(taskId, recurringTaskId, date)
-    console.log('🔍 Database delete success:', success)
     
     if (success) {
       const filteredCompletions = taskCompletions.filter(tc => {
         // Удаляем completion для конкретной задачи и даты
         if (taskId && tc.task_id === taskId && tc.date === date) {
-          console.log('🔍 Removing completion for task:', tc)
           return false
         }
         if (recurringTaskId && tc.recurring_task_id === recurringTaskId && tc.date === date) {
-          console.log('🔍 Removing completion for recurring task:', tc)
           return false
         }
         return true
       })
-      console.log('🔍 Setting filtered completions array, length:', filteredCompletions.length)
       setTaskCompletions(filteredCompletions)
-      
-      // ✅ Принудительно перезагружаем данные для синхронизации
-      await loadAllData()
     }
     return success
   }

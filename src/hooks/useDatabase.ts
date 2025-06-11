@@ -43,9 +43,14 @@ export function useDatabase() {
   }
 
   const updateTask = async (id: string, updates: Parameters<typeof databaseService.updateTask>[1]) => {
+    console.log('🔍 updateTask called with:', { id, updates })
     const updatedTask = await databaseService.updateTask(id, updates)
+    console.log('🔍 Database returned updated task:', updatedTask)
+    
     if (updatedTask) {
-      setTasks(tasks.map(t => t.id === id ? updatedTask : t))
+      const updatedTasks = tasks.map(t => t.id === id ? updatedTask : t)
+      console.log('🔍 Updating tasks state:', updatedTasks.filter(t => t.id === id))
+      setTasks(updatedTasks)
     }
     return updatedTask
   }
@@ -91,9 +96,14 @@ export function useDatabase() {
     recurringTaskId: string | null, 
     date: string
   ) => {
+    console.log('🔍 addTaskCompletion called with:', { taskId, recurringTaskId, date })
     const newCompletion = await databaseService.addTaskCompletion(taskId, recurringTaskId, date)
+    console.log('🔍 Database returned:', newCompletion)
+    
     if (newCompletion) {
-      setTaskCompletions([...taskCompletions, newCompletion])
+      const updatedCompletions = [...taskCompletions, newCompletion]
+      console.log('🔍 Updating taskCompletions:', updatedCompletions)
+      setTaskCompletions(updatedCompletions)
     }
     return newCompletion
   }
@@ -103,18 +113,25 @@ export function useDatabase() {
     recurringTaskId: string | null, 
     date: string
   ) => {
+    console.log('🔍 removeTaskCompletion called with:', { taskId, recurringTaskId, date })
     const success = await databaseService.removeTaskCompletion(taskId, recurringTaskId, date)
+    console.log('🔍 Database delete success:', success)
+    
     if (success) {
-      setTaskCompletions(taskCompletions.filter(tc => {
+      const filteredCompletions = taskCompletions.filter(tc => {
         // Удаляем completion для конкретной задачи и даты
         if (taskId && tc.task_id === taskId && tc.date === date) {
+          console.log('🔍 Removing completion for task:', tc)
           return false
         }
         if (recurringTaskId && tc.recurring_task_id === recurringTaskId && tc.date === date) {
+          console.log('🔍 Removing completion for recurring task:', tc)
           return false
         }
         return true
-      }))
+      })
+      console.log('🔍 Updating taskCompletions after remove:', filteredCompletions)
+      setTaskCompletions(filteredCompletions)
     }
     return success
   }

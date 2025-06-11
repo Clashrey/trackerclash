@@ -48,9 +48,15 @@ export function useDatabase() {
     console.log('🔍 Database returned updated task:', updatedTask)
     
     if (updatedTask) {
-      const updatedTasks = tasks.map(t => t.id === id ? updatedTask : t)
-      console.log('🔍 Updating tasks state:', updatedTasks.filter(t => t.id === id))
+      // ✅ Создаем полностью новый массив для принудительного rerending
+      const updatedTasks = tasks.map(t => 
+        t.id === id ? { ...updatedTask } : { ...t }
+      )
+      console.log('🔍 Setting new tasks array, length:', updatedTasks.length)
       setTasks(updatedTasks)
+      
+      // ✅ Принудительно перезагружаем данные для синхронизации
+      await loadAllData()
     }
     return updatedTask
   }
@@ -73,9 +79,20 @@ export function useDatabase() {
   }
 
   const updateRecurringTask = async (id: string, updates: Parameters<typeof databaseService.updateRecurringTask>[1]) => {
+    console.log('🔍 updateRecurringTask called with:', { id, updates })
     const updatedTask = await databaseService.updateRecurringTask(id, updates)
+    console.log('🔍 Database returned updated recurring task:', updatedTask)
+    
     if (updatedTask) {
-      setRecurringTasks(recurringTasks.map(t => t.id === id ? updatedTask : t))
+      // ✅ Создаем полностью новый массив для принудительного rerending
+      const updatedTasks = recurringTasks.map(t => 
+        t.id === id ? { ...updatedTask } : { ...t }
+      )
+      console.log('🔍 Setting new recurring tasks array, length:', updatedTasks.length)
+      setRecurringTasks(updatedTasks)
+      
+      // ✅ Принудительно перезагружаем данные для синхронизации
+      await loadAllData()
     }
     return updatedTask
   }
@@ -101,9 +118,13 @@ export function useDatabase() {
     console.log('🔍 Database returned:', newCompletion)
     
     if (newCompletion) {
-      const updatedCompletions = [...taskCompletions, newCompletion]
-      console.log('🔍 Updating taskCompletions:', updatedCompletions)
+      // ✅ Создаем полностью новый массив
+      const updatedCompletions = [...taskCompletions, { ...newCompletion }]
+      console.log('🔍 Setting new completions array, length:', updatedCompletions.length)
       setTaskCompletions(updatedCompletions)
+      
+      // ✅ Принудительно перезагружаем данные для синхронизации
+      await loadAllData()
     }
     return newCompletion
   }
@@ -130,8 +151,11 @@ export function useDatabase() {
         }
         return true
       })
-      console.log('🔍 Updating taskCompletions after remove:', filteredCompletions)
+      console.log('🔍 Setting filtered completions array, length:', filteredCompletions.length)
       setTaskCompletions(filteredCompletions)
+      
+      // ✅ Принудительно перезагружаем данные для синхронизации
+      await loadAllData()
     }
     return success
   }

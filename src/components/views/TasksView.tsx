@@ -5,8 +5,8 @@ import { TaskItem } from '@/components/TaskItem'
 import { AddTaskForm } from '@/components/AddTaskForm'
 
 export const TasksView: React.FC = () => {
-  const { tasks } = useAppStore()
-  const { updateTask, deleteTask, loadAllData } = useDatabase()
+  const { tasks, setTasks } = useAppStore()
+  const { updateTask, deleteTask } = useDatabase()
   const [draggedTaskId, setDraggedTaskId] = useState<string | null>(null)
   const [dragOverIndex, setDragOverIndex] = useState<number | null>(null)
   
@@ -51,31 +51,41 @@ export const TasksView: React.FC = () => {
     const draggedIndex = tasksList.findIndex(t => t.id === draggedTaskId)
     if (draggedIndex === dropIndex) return
 
-    // Пересчитываем order_index для всех задач
+    // 🔥 ОПТИМИСТИЧНОЕ ОБНОВЛЕНИЕ: Сначала обновляем UI
     const reorderedTasks = [...tasksList]
     const [movedTask] = reorderedTasks.splice(draggedIndex, 1)
     reorderedTasks.splice(dropIndex, 0, movedTask)
 
-    const updates = reorderedTasks.map((task, index) => ({
-      id: task.id,
+    const reorderedWithIndex = reorderedTasks.map((task, index) => ({
+      ...task,
       order_index: index
     }))
 
-    console.log('Reordering tasks:', updates)
+    // Сразу обновляем UI (оптимистично)
+    const updatedTasks = tasks.map(task => {
+      const reorderedTask = reorderedWithIndex.find(rt => rt.id === task.id)
+      return reorderedTask ? { ...task, order_index: reorderedTask.order_index } : task
+    })
+    setTasks(updatedTasks)
 
-    // Обновляем в базе данных
+    console.log('Reordering tasks optimistically:', reorderedWithIndex.map(t => ({ id: t.id, order_index: t.order_index })))
+
+    // Затем обновляем в БД (в фоне)
     try {
-      for (const update of updates) {
-        await updateTask(update.id, { order_index: update.order_index })
-      }
-      console.log('Successfully reordered tasks')
+      const updatePromises = reorderedWithIndex.map(task => 
+        updateTask(task.id, { order_index: task.order_index })
+      )
+      
+      await Promise.all(updatePromises)
+      console.log('Successfully reordered tasks in database')
+      
     } catch (error) {
-      console.error('Failed to reorder tasks:', error)
+      console.error('Failed to reorder tasks in database:', error)
     }
 
     setDraggedTaskId(null)
     setDragOverIndex(null)
-  }, [draggedTaskId, tasksList, updateTask])
+  }, [draggedTaskId, tasksList, tasks, setTasks, updateTask])
 
   return (
     <div className="space-y-6">

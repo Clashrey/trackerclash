@@ -1,4 +1,4 @@
-import { supabase } from './supabase'
+import { supabase, setUserContext } from './supabase'
 
 export interface Task {
   id: string
@@ -33,188 +33,309 @@ export interface TaskCompletion {
 
 class DatabaseService {
   private getCurrentUser() {
-    const user = localStorage.getItem('current_user')
-    return user ? JSON.parse(user) : null
+    const apiKey = localStorage.getItem('tracker_api_key')
+    return apiKey ? { api_key: apiKey } : null
   }
 
-  private getStorageKey(type: string) {
+  private async ensureUserContext() {
     const user = this.getCurrentUser()
-    return user ? `${type}_${user.id}` : null
+    if (!user) return null
+
+    try {
+      // Получаем userId по API ключу
+      const { data, error } = await supabase
+        .from('users')
+        .select('user_id')
+        .eq('api_key', user.api_key)
+        .single()
+
+      if (error || !data) {
+        console.error('User not found:', error)
+        return null
+      }
+
+      // Устанавливаем контекст для RLS
+      await setUserContext(data.user_id)
+      return data.user_id
+    } catch (error) {
+      console.error('Failed to set user context:', error)
+      return null
+    }
   }
 
-  // Tasks - используем localStorage для демо
+  // Tasks
   async getTasks(): Promise<Task[]> {
-    const storageKey = this.getStorageKey('tasks')
-    if (!storageKey) return []
+    const userId = await this.ensureUserContext()
+    if (!userId) return []
 
-    const stored = localStorage.getItem(storageKey)
-    return stored ? JSON.parse(stored) : []
+    try {
+      const { data, error } = await supabase
+        .from('tasks')
+        .select('*')
+        .order('order_index')
+
+      if (error) {
+        console.error('Error fetching tasks:', error)
+        return []
+      }
+
+      return data || []
+    } catch (error) {
+      console.error('Error in getTasks:', error)
+      return []
+    }
   }
 
   async addTask(task: Omit<Task, 'id' | 'user_id' | 'created_at' | 'updated_at'>): Promise<Task | null> {
-    const user = this.getCurrentUser()
-    if (!user) return null
+    const userId = await this.ensureUserContext()
+    if (!userId) return null
 
-    const newTask: Task = {
-      ...task,
-      id: Date.now().toString() + Math.random().toString(36).substr(2, 9),
-      user_id: user.id,
-      created_at: new Date().toISOString(),
-      updated_at: new Date().toISOString()
+    try {
+      const { data, error } = await supabase
+        .from('tasks')
+        .insert([{
+          ...task,
+          user_id: userId
+        }])
+        .select()
+        .single()
+
+      if (error) {
+        console.error('Error adding task:', error)
+        return null
+      }
+
+      return data
+    } catch (error) {
+      console.error('Error in addTask:', error)
+      return null
     }
-
-    const tasks = await this.getTasks()
-    tasks.push(newTask)
-    
-    const storageKey = this.getStorageKey('tasks')
-    if (storageKey) {
-      localStorage.setItem(storageKey, JSON.stringify(tasks))
-    }
-
-    return newTask
   }
 
   async updateTask(id: string, updates: Partial<Task>): Promise<Task | null> {
-    const tasks = await this.getTasks()
-    const taskIndex = tasks.findIndex(t => t.id === id)
-    
-    if (taskIndex === -1) return null
+    await this.ensureUserContext()
 
-    tasks[taskIndex] = {
-      ...tasks[taskIndex],
-      ...updates,
-      updated_at: new Date().toISOString()
+    try {
+      const { data, error } = await supabase
+        .from('tasks')
+        .update(updates)
+        .eq('id', id)
+        .select()
+        .single()
+
+      if (error) {
+        console.error('Error updating task:', error)
+        return null
+      }
+
+      return data
+    } catch (error) {
+      console.error('Error in updateTask:', error)
+      return null
     }
-
-    const storageKey = this.getStorageKey('tasks')
-    if (storageKey) {
-      localStorage.setItem(storageKey, JSON.stringify(tasks))
-    }
-
-    return tasks[taskIndex]
   }
 
   async deleteTask(id: string): Promise<boolean> {
-    const tasks = await this.getTasks()
-    const filteredTasks = tasks.filter(t => t.id !== id)
-    
-    const storageKey = this.getStorageKey('tasks')
-    if (storageKey) {
-      localStorage.setItem(storageKey, JSON.stringify(filteredTasks))
-    }
+    await this.ensureUserContext()
 
-    return true
+    try {
+      const { error } = await supabase
+        .from('tasks')
+        .delete()
+        .eq('id', id)
+
+      if (error) {
+        console.error('Error deleting task:', error)
+        return false
+      }
+
+      return true
+    } catch (error) {
+      console.error('Error in deleteTask:', error)
+      return false
+    }
   }
 
-  // Recurring Tasks - используем localStorage для демо
+  // Recurring Tasks
   async getRecurringTasks(): Promise<RecurringTask[]> {
-    const storageKey = this.getStorageKey('recurring_tasks')
-    if (!storageKey) return []
+    const userId = await this.ensureUserContext()
+    if (!userId) return []
 
-    const stored = localStorage.getItem(storageKey)
-    return stored ? JSON.parse(stored) : []
+    try {
+      const { data, error } = await supabase
+        .from('recurring_tasks')
+        .select('*')
+        .order('created_at')
+
+      if (error) {
+        console.error('Error fetching recurring tasks:', error)
+        return []
+      }
+
+      return data || []
+    } catch (error) {
+      console.error('Error in getRecurringTasks:', error)
+      return []
+    }
   }
 
   async addRecurringTask(task: Omit<RecurringTask, 'id' | 'user_id' | 'created_at' | 'updated_at'>): Promise<RecurringTask | null> {
-    const user = this.getCurrentUser()
-    if (!user) return null
+    const userId = await this.ensureUserContext()
+    if (!userId) return null
 
-    const newTask: RecurringTask = {
-      ...task,
-      id: Date.now().toString() + Math.random().toString(36).substr(2, 9),
-      user_id: user.id,
-      created_at: new Date().toISOString(),
-      updated_at: new Date().toISOString()
+    try {
+      const { data, error } = await supabase
+        .from('recurring_tasks')
+        .insert([{
+          ...task,
+          user_id: userId
+        }])
+        .select()
+        .single()
+
+      if (error) {
+        console.error('Error adding recurring task:', error)
+        return null
+      }
+
+      return data
+    } catch (error) {
+      console.error('Error in addRecurringTask:', error)
+      return null
     }
-
-    const tasks = await this.getRecurringTasks()
-    tasks.push(newTask)
-    
-    const storageKey = this.getStorageKey('recurring_tasks')
-    if (storageKey) {
-      localStorage.setItem(storageKey, JSON.stringify(tasks))
-    }
-
-    return newTask
   }
 
   async updateRecurringTask(id: string, updates: Partial<RecurringTask>): Promise<RecurringTask | null> {
-    const tasks = await this.getRecurringTasks()
-    const taskIndex = tasks.findIndex(t => t.id === id)
-    
-    if (taskIndex === -1) return null
+    await this.ensureUserContext()
 
-    tasks[taskIndex] = {
-      ...tasks[taskIndex],
-      ...updates,
-      updated_at: new Date().toISOString()
+    try {
+      const { data, error } = await supabase
+        .from('recurring_tasks')
+        .update(updates)
+        .eq('id', id)
+        .select()
+        .single()
+
+      if (error) {
+        console.error('Error updating recurring task:', error)
+        return null
+      }
+
+      return data
+    } catch (error) {
+      console.error('Error in updateRecurringTask:', error)
+      return null
     }
-
-    const storageKey = this.getStorageKey('recurring_tasks')
-    if (storageKey) {
-      localStorage.setItem(storageKey, JSON.stringify(tasks))
-    }
-
-    return tasks[taskIndex]
   }
 
   async deleteRecurringTask(id: string): Promise<boolean> {
-    const tasks = await this.getRecurringTasks()
-    const filteredTasks = tasks.filter(t => t.id !== id)
-    
-    const storageKey = this.getStorageKey('recurring_tasks')
-    if (storageKey) {
-      localStorage.setItem(storageKey, JSON.stringify(filteredTasks))
-    }
+    await this.ensureUserContext()
 
-    return true
+    try {
+      const { error } = await supabase
+        .from('recurring_tasks')
+        .delete()
+        .eq('id', id)
+
+      if (error) {
+        console.error('Error deleting recurring task:', error)
+        return false
+      }
+
+      return true
+    } catch (error) {
+      console.error('Error in deleteRecurringTask:', error)
+      return false
+    }
   }
 
-  // Task Completions - используем localStorage для демо
+  // Task Completions
   async getTaskCompletions(): Promise<TaskCompletion[]> {
-    const storageKey = this.getStorageKey('task_completions')
-    if (!storageKey) return []
+    const userId = await this.ensureUserContext()
+    if (!userId) return []
 
-    const stored = localStorage.getItem(storageKey)
-    return stored ? JSON.parse(stored) : []
+    try {
+      const { data, error } = await supabase
+        .from('task_completions')
+        .select('*')
+        .order('date', { ascending: false })
+
+      if (error) {
+        console.error('Error fetching task completions:', error)
+        return []
+      }
+
+      // Преобразуем данные в ожидаемый формат
+      return (data || []).map(item => ({
+        id: item.id,
+        task_title: item.task_title || '',
+        task_type: (item.task_type as 'regular' | 'recurring') || 'regular',
+        date: item.date,
+        user_id: item.user_id,
+        created_at: item.created_at
+      }))
+    } catch (error) {
+      console.error('Error in getTaskCompletions:', error)
+      return []
+    }
   }
 
   async addTaskCompletion(completion: Omit<TaskCompletion, 'id' | 'user_id' | 'created_at'>): Promise<TaskCompletion | null> {
-    const user = this.getCurrentUser()
-    if (!user) return null
+    const userId = await this.ensureUserContext()
+    if (!userId) return null
 
-    const newCompletion: TaskCompletion = {
-      ...completion,
-      id: Date.now().toString() + Math.random().toString(36).substr(2, 9),
-      user_id: user.id,
-      created_at: new Date().toISOString()
+    try {
+      const { data, error } = await supabase
+        .from('task_completions')
+        .insert([{
+          task_title: completion.task_title,
+          task_type: completion.task_type,
+          date: completion.date,
+          user_id: userId
+        }])
+        .select()
+        .single()
+
+      if (error) {
+        console.error('Error adding task completion:', error)
+        return null
+      }
+
+      return {
+        id: data.id,
+        task_title: data.task_title || '',
+        task_type: (data.task_type as 'regular' | 'recurring') || 'regular',
+        date: data.date,
+        user_id: data.user_id,
+        created_at: data.created_at
+      }
+    } catch (error) {
+      console.error('Error in addTaskCompletion:', error)
+      return null
     }
-
-    const completions = await this.getTaskCompletions()
-    completions.push(newCompletion)
-    
-    const storageKey = this.getStorageKey('task_completions')
-    if (storageKey) {
-      localStorage.setItem(storageKey, JSON.stringify(completions))
-    }
-
-    return newCompletion
   }
 
   async removeTaskCompletion(taskTitle: string, date: string): Promise<boolean> {
-    const completions = await this.getTaskCompletions()
-    const filteredCompletions = completions.filter(c => 
-      !(c.task_title === taskTitle && c.date === date)
-    )
-    
-    const storageKey = this.getStorageKey('task_completions')
-    if (storageKey) {
-      localStorage.setItem(storageKey, JSON.stringify(filteredCompletions))
-    }
+    await this.ensureUserContext()
 
-    return true
+    try {
+      const { error } = await supabase
+        .from('task_completions')
+        .delete()
+        .eq('task_title', taskTitle)
+        .eq('date', date)
+
+      if (error) {
+        console.error('Error removing task completion:', error)
+        return false
+      }
+
+      return true
+    } catch (error) {
+      console.error('Error in removeTaskCompletion:', error)
+      return false
+    }
   }
 }
 
 export const databaseService = new DatabaseService()
-

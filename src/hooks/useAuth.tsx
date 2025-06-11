@@ -35,6 +35,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
     try {
       // Проверяем сохраненный API-ключ
       const savedApiKey = localStorage.getItem('tracker_api_key')
+      console.log('🔍 checkAuth - API key from localStorage:', savedApiKey)
       
       if (savedApiKey && validateApiKey(savedApiKey)) {
         // Проверяем ключ в БД
@@ -44,11 +45,27 @@ export function AuthProvider({ children }: AuthProviderProps) {
           .eq('api_key', savedApiKey)
           .single()
 
+        console.log('🔍 User lookup result:', { userData, error })
+
         if (error || !userData) {
-          console.error('API key not found or invalid:', error)
+          console.error('❌ API key not found or invalid:', error)
           localStorage.removeItem('tracker_api_key')
           setLoading(false)
           return
+        }
+
+        // ✅ ИСПРАВЛЕНО: Проверяем что user_id существует
+        if (!userData.user_id) {
+          console.error('❌ User found but user_id is missing:', userData)
+          // Создаем user_id если его нет
+          const newUserId = crypto.randomUUID()
+          await supabase
+            .from('users')
+            .update({ user_id: newUserId })
+            .eq('id', userData.id)
+          
+          userData.user_id = newUserId
+          console.log('✅ Created missing user_id:', newUserId)
         }
 
         // Обновляем последнюю активность
@@ -65,11 +82,15 @@ export function AuthProvider({ children }: AuthProviderProps) {
           created_at: userData.created_at
         }
 
+        console.log('✅ Setting user object:', userObj)
         setUser(userObj)
+        console.log('✅ Setting userId in store:', userData.user_id)
         setUserId(userData.user_id)
+      } else {
+        console.log('🔍 No valid API key found')
       }
     } catch (error) {
-      console.error('Auth check failed:', error)
+      console.error('❌ Auth check failed:', error)
       localStorage.removeItem('tracker_api_key')
     } finally {
       setLoading(false)

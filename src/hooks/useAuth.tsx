@@ -1,6 +1,6 @@
 import { createContext, useContext, useEffect, useState, ReactNode } from 'react'
 import { useAppStore } from '@/store'
-import { supabase, setUserContext, validateApiKey } from '@/lib/supabase'
+import { supabase, validateApiKey } from '@/lib/supabase'
 
 interface User {
   id: string
@@ -37,9 +37,6 @@ export function AuthProvider({ children }: AuthProviderProps) {
       const savedApiKey = localStorage.getItem('tracker_api_key')
       
       if (savedApiKey && validateApiKey(savedApiKey)) {
-        // Устанавливаем контекст для RLS
-        await setUserContext('temp') // временно
-        
         // Проверяем ключ в БД
         const { data: userData, error } = await supabase
           .from('users')
@@ -53,9 +50,6 @@ export function AuthProvider({ children }: AuthProviderProps) {
           setLoading(false)
           return
         }
-
-        // Устанавливаем правильный контекст
-        await setUserContext(userData.user_id)
 
         // Обновляем последнюю активность
         await supabase

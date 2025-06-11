@@ -17,16 +17,17 @@ export interface RecurringTask {
   title: string
   frequency: 'daily' | 'weekly' | 'custom'
   days_of_week?: number[]
-  order_index?: number // Добавляем поддержку order_index
+  order_index?: number
   user_id: string
   created_at: string
   updated_at: string
 }
 
+// ✅ ИСПРАВЛЕННЫЙ интерфейс TaskCompletion
 export interface TaskCompletion {
   id: string
-  task_title: string
-  task_type: 'regular' | 'recurring'
+  task_id?: string | null
+  recurring_task_id?: string | null
   date: string
   user_id: string
   created_at: string
@@ -252,7 +253,7 @@ class DatabaseService {
     }
   }
 
-  // Task Completions
+  // ✅ ИСПРАВЛЕННЫЕ функции Task Completions
   async getTaskCompletions(): Promise<TaskCompletion[]> {
     const userId = await this.getCurrentUserId()
     if (!userId) return []
@@ -269,31 +270,40 @@ class DatabaseService {
         return []
       }
 
-      return (data || []).map(item => ({
-        id: item.id,
-        task_title: item.task_title || '',
-        task_type: (item.task_type as 'regular' | 'recurring') || 'regular',
-        date: item.date,
-        user_id: item.user_id,
-        created_at: item.created_at
-      }))
+      return data || []
     } catch (error) {
       console.error('Error in getTaskCompletions:', error)
       return []
     }
   }
 
-  async addTaskCompletion(completion: Omit<TaskCompletion, 'id' | 'user_id' | 'created_at'>): Promise<TaskCompletion | null> {
+  // ✅ ИСПРАВЛЕННАЯ функция addTaskCompletion
+  async addTaskCompletion(
+    taskId: string | null, 
+    recurringTaskId: string | null, 
+    date: string
+  ): Promise<TaskCompletion | null> {
     const userId = await this.getCurrentUserId()
     if (!userId) return null
+
+    // Проверяем, что передан либо task_id, либо recurring_task_id
+    if (!taskId && !recurringTaskId) {
+      console.error('Either taskId or recurringTaskId must be provided')
+      return null
+    }
+
+    if (taskId && recurringTaskId) {
+      console.error('Cannot provide both taskId and recurringTaskId')
+      return null
+    }
 
     try {
       const { data, error } = await supabase
         .from('task_completions')
         .insert([{
-          task_title: completion.task_title,
-          task_type: completion.task_type,
-          date: completion.date,
+          task_id: taskId,
+          recurring_task_id: recurringTaskId,
+          date: date,
           user_id: userId
         }])
         .select()
@@ -304,31 +314,39 @@ class DatabaseService {
         return null
       }
 
-      return {
-        id: data.id,
-        task_title: data.task_title || '',
-        task_type: (data.task_type as 'regular' | 'recurring') || 'regular',
-        date: data.date,
-        user_id: data.user_id,
-        created_at: data.created_at
-      }
+      return data
     } catch (error) {
       console.error('Error in addTaskCompletion:', error)
       return null
     }
   }
 
-  async removeTaskCompletion(taskTitle: string, date: string): Promise<boolean> {
+  // ✅ ИСПРАВЛЕННАЯ функция removeTaskCompletion
+  async removeTaskCompletion(
+    taskId: string | null, 
+    recurringTaskId: string | null, 
+    date: string
+  ): Promise<boolean> {
     const userId = await this.getCurrentUserId()
     if (!userId) return false
 
     try {
-      const { error } = await supabase
+      let query = supabase
         .from('task_completions')
         .delete()
-        .eq('task_title', taskTitle)
         .eq('date', date)
         .eq('user_id', userId)
+
+      if (taskId) {
+        query = query.eq('task_id', taskId)
+      } else if (recurringTaskId) {
+        query = query.eq('recurring_task_id', recurringTaskId)
+      } else {
+        console.error('Either taskId or recurringTaskId must be provided')
+        return false
+      }
+
+      const { error } = await query
 
       if (error) {
         console.error('Error removing task completion:', error)
@@ -338,6 +356,44 @@ class DatabaseService {
       return true
     } catch (error) {
       console.error('Error in removeTaskCompletion:', error)
+      return false
+    }
+  }
+
+  // ✅ НОВАЯ функция для проверки выполнения задачи
+  async isTaskCompleted(
+    taskId: string | null, 
+    recurringTaskId: string | null, 
+    date: string
+  ): Promise<boolean> {
+    const userId = await this.getCurrentUserId()
+    if (!userId) return false
+
+    try {
+      let query = supabase
+        .from('task_completions')
+        .select('id')
+        .eq('date', date)
+        .eq('user_id', userId)
+
+      if (taskId) {
+        query = query.eq('task_id', taskId)
+      } else if (recurringTaskId) {
+        query = query.eq('recurring_task_id', recurringTaskId)
+      } else {
+        return false
+      }
+
+      const { data, error } = await query.single()
+
+      if (error && error.code !== 'PGRST116') { // PGRST116 = no rows found
+        console.error('Error checking task completion:', error)
+        return false
+      }
+
+      return !!data
+    } catch (error) {
+      console.error('Error in isTaskCompleted:', error)
       return false
     }
   }

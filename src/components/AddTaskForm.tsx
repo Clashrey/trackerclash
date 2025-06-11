@@ -17,7 +17,7 @@ export const AddTaskForm: React.FC<AddTaskFormProps> = ({
   placeholder = 'Новая задача...',
   className
 }) => {
-  const { userId, selectedDate } = useAppStore()
+  const { userId, selectedDate, tasks } = useAppStore()
   const { addTask } = useDatabase()
   const [title, setTitle] = useState('')
   const [isExpanded, setIsExpanded] = useState(false)
@@ -29,13 +29,22 @@ export const AddTaskForm: React.FC<AddTaskFormProps> = ({
 
     const taskDate = date ? date.toISOString().split('T')[0] : (category === 'today' ? selectedDate : undefined)
     
+    // Получаем максимальный order_index для данной категории
+    const categoryTasks = tasks.filter(task => 
+      task.category === (category === 'today' ? 'today' : category) &&
+      (!taskDate || task.date === taskDate)
+    )
+    const maxOrderIndex = categoryTasks.length > 0 
+      ? Math.max(...categoryTasks.map(t => t.order_index)) 
+      : -1
+    
     await addTask({
       user_id: userId,
       title: title.trim(),
       category: category === 'today' ? 'today' : category,
       completed: false,
       date: taskDate,
-      order_index: 0,
+      order_index: maxOrderIndex + 1, // ✅ Правильный порядковый номер
     })
 
     setTitle('')
@@ -95,4 +104,3 @@ export const AddTaskForm: React.FC<AddTaskFormProps> = ({
     </form>
   )
 }
-

@@ -1,9 +1,12 @@
 import { createContext, useContext, useEffect, useState, ReactNode } from 'react'
 import { useAppStore } from '@/store'
+import { supabase, setUserContext, validateApiKey } from '@/lib/supabase'
 
 interface User {
   id: string
-  username: string
+  user_id: string
+  api_key: string
+  name?: string
   created_at: string
 }
 
@@ -25,24 +28,64 @@ export function AuthProvider({ children }: AuthProviderProps) {
   const { setUserId } = useAppStore()
 
   useEffect(() => {
-    const currentUser = localStorage.getItem('current_user')
-    if (currentUser) {
-      try {
-        const userData = JSON.parse(currentUser)
-        setUser(userData)
-        setUserId(userData.id) // Устанавливаем userId в store
-      } catch (error) {
-        localStorage.removeItem('current_user')
-      }
-    }
-    setLoading(false)
+    checkAuth()
   }, [setUserId])
 
+  const checkAuth = async () => {
+    try {
+      // Проверяем сохраненный API-ключ
+      const savedApiKey = localStorage.getItem('tracker_api_key')
+      
+      if (savedApiKey && validateApiKey(savedApiKey)) {
+        // Устанавливаем контекст для RLS
+        await setUserContext('temp') // временно
+        
+        // Проверяем ключ в БД
+        const { data: userData, error } = await supabase
+          .from('users')
+          .select('*')
+          .eq('api_key', savedApiKey)
+          .single()
+
+        if (error || !userData) {
+          console.error('API key not found or invalid:', error)
+          localStorage.removeItem('tracker_api_key')
+          setLoading(false)
+          return
+        }
+
+        // Устанавливаем правильный контекст
+        await setUserContext(userData.user_id)
+
+        // Обновляем последнюю активность
+        await supabase
+          .from('users')
+          .update({ last_active: new Date().toISOString() })
+          .eq('id', userData.id)
+
+        const userObj: User = {
+          id: userData.id,
+          user_id: userData.user_id,
+          api_key: userData.api_key!,
+          name: userData.name || undefined,
+          created_at: userData.created_at
+        }
+
+        setUser(userObj)
+        setUserId(userData.user_id)
+      }
+    } catch (error) {
+      console.error('Auth check failed:', error)
+      localStorage.removeItem('tracker_api_key')
+    } finally {
+      setLoading(false)
+    }
+  }
+
   const signOut = () => {
-    localStorage.removeItem('current_user')
-    localStorage.removeItem('user_password')
+    localStorage.removeItem('tracker_api_key')
     setUser(null)
-    setUserId(null) // Очищаем userId в store
+    setUserId(null)
     window.location.reload()
   }
 
@@ -66,4 +109,3 @@ export function useAuth() {
   }
   return context
 }
-

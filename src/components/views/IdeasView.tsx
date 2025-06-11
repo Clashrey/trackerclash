@@ -6,7 +6,7 @@ import { AddTaskForm } from '@/components/AddTaskForm'
 
 export const IdeasView: React.FC = () => {
   const { tasks } = useAppStore()
-  const { updateTask, deleteTask } = useDatabase()
+  const { updateTask, deleteTask, loadAllData } = useDatabase()
   const [draggedTaskId, setDraggedTaskId] = useState<string | null>(null)
   const [dragOverIndex, setDragOverIndex] = useState<number | null>(null)
   
@@ -69,13 +69,18 @@ export const IdeasView: React.FC = () => {
         await updateTask(update.id, { order_index: update.order_index })
       }
       console.log('Successfully reordered ideas')
+      
+      // 🔥 КЛЮЧЕВОЕ ИСПРАВЛЕНИЕ: Перезагружаем данные из БД
+      await loadAllData()
+      console.log('Data reloaded after reordering')
+      
     } catch (error) {
       console.error('Failed to reorder ideas:', error)
     }
 
     setDraggedTaskId(null)
     setDragOverIndex(null)
-  }, [draggedTaskId, ideasList, updateTask])
+  }, [draggedTaskId, ideasList, updateTask, loadAllData])
 
   return (
     <div className="space-y-6">

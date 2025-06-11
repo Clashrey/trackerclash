@@ -85,23 +85,47 @@ export function useDatabase() {
     return success
   }
 
-  // Task Completions
-  const addTaskCompletion = async (completion: Parameters<typeof databaseService.addTaskCompletion>[0]) => {
-    const newCompletion = await databaseService.addTaskCompletion(completion)
+  // ✅ ИСПРАВЛЕННЫЕ Task Completions
+  const addTaskCompletion = async (
+    taskId: string | null, 
+    recurringTaskId: string | null, 
+    date: string
+  ) => {
+    const newCompletion = await databaseService.addTaskCompletion(taskId, recurringTaskId, date)
     if (newCompletion) {
       setTaskCompletions([...taskCompletions, newCompletion])
     }
     return newCompletion
   }
 
-  const removeTaskCompletion = async (taskId: string, date: string) => {
-    const success = await databaseService.removeTaskCompletion(taskId, date)
+  const removeTaskCompletion = async (
+    taskId: string | null, 
+    recurringTaskId: string | null, 
+    date: string
+  ) => {
+    const success = await databaseService.removeTaskCompletion(taskId, recurringTaskId, date)
     if (success) {
-      setTaskCompletions(taskCompletions.filter(tc => 
-        !(tc.task_id === taskId || tc.recurring_task_id === taskId) || tc.date !== date
-      ))
+      setTaskCompletions(taskCompletions.filter(tc => {
+        // Удаляем completion для конкретной задачи и даты
+        if (taskId && tc.task_id === taskId && tc.date === date) {
+          return false
+        }
+        if (recurringTaskId && tc.recurring_task_id === recurringTaskId && tc.date === date) {
+          return false
+        }
+        return true
+      }))
     }
     return success
+  }
+
+  // ✅ НОВАЯ функция для проверки выполнения
+  const isTaskCompleted = async (
+    taskId: string | null, 
+    recurringTaskId: string | null, 
+    date: string
+  ) => {
+    return await databaseService.isTaskCompleted(taskId, recurringTaskId, date)
   }
 
   return {
@@ -120,7 +144,7 @@ export function useDatabase() {
     
     // Task Completions
     addTaskCompletion,
-    removeTaskCompletion
+    removeTaskCompletion,
+    isTaskCompleted
   }
 }
-

@@ -11,9 +11,11 @@ interface TaskCompletion {
 }
 
 interface AppState {
-  // User
+  // User & Auth
   userId: string | null
-  setUserId: (userId: string) => void
+  apiKey: string | null
+  setUserId: (userId: string | null) => void
+  setApiKey: (apiKey: string | null) => void
   
   // Current view
   currentCategory: TaskCategory
@@ -49,9 +51,11 @@ interface AppState {
 }
 
 export const useAppStore = create<AppState>((set, get) => ({
-  // User
+  // User & Auth
   userId: null,
+  apiKey: null,
   setUserId: (userId) => set({ userId }),
+  setApiKey: (apiKey) => set({ apiKey }),
   
   // Current view
   currentCategory: 'today',
@@ -130,4 +134,3 @@ export const useAppStore = create<AppState>((set, get) => ({
 }))
 
 export type { TaskCompletion }
-

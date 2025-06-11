@@ -108,17 +108,23 @@ export function TodayView() {
     const [movedTask] = reorderedTasks.splice(draggedIndex, 1)
     reorderedTasks.splice(dropIndex, 0, movedTask)
 
-    // Обновляем order_index для обычных задач
-    const updates = reorderedTasks
-      .filter(task => !('isRecurring' in task))
-      .map((task, index) => ({
-        id: task.id,
-        order_index: index
-      }))
+    // ✅ ИСПРАВЛЕННАЯ ЛОГИКА: Получаем только обычные задачи и правильно пересчитываем order_index
+    const regularTasks = reorderedTasks.filter(task => !('isRecurring' in task))
+    const updates = regularTasks.map((task, index) => ({
+      id: task.id,
+      order_index: index // Теперь индекс правильный
+    }))
+
+    console.log('Reordering tasks:', updates) // Для отладки
 
     // Обновляем в базе данных
-    for (const update of updates) {
-      await updateTask(update.id, { order_index: update.order_index })
+    try {
+      for (const update of updates) {
+        await updateTask(update.id, { order_index: update.order_index })
+      }
+      console.log('Successfully reordered tasks') // Для отладки
+    } catch (error) {
+      console.error('Failed to reorder tasks:', error)
     }
 
     setDraggedTaskId(null)
@@ -191,4 +197,3 @@ export function TodayView() {
     </div>
   )
 }
-

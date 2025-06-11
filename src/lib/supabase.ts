@@ -6,7 +6,7 @@ const supabaseAnonKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYm
 
 export const supabase = createClient(supabaseUrl, supabaseAnonKey)
 
-// Database types (обновленные для API-ключей)
+// Database types (упрощенные)
 export interface Database {
   public: {
     Tables: {
@@ -151,17 +151,4 @@ export const generateApiKey = (): string => {
 
 export const validateApiKey = (key: string): boolean => {
   return /^tk_[A-Za-z0-9]{32}$/.test(key)
-}
-
-// Set user context for RLS
-export const setUserContext = async (userId: string) => {
-  try {
-    await supabase.rpc('set_config', {
-      setting_name: 'app.current_user_id',
-      setting_value: userId,
-      is_local: true
-    })
-  } catch (error) {
-    console.error('Failed to set user context:', error)
-  }
 }

@@ -24,24 +24,18 @@ interface AppState {
   // Current date for "today" view
   currentDate: Date
   setCurrentDate: (date: Date) => void
-  selectedDate: string // Добавляем selectedDate как строку в формате YYYY-MM-DD
+  selectedDate: string
   setSelectedDate: (date: string) => void
   
-  // Tasks
+  // Tasks - ✅ ТОЛЬКО setters, без бизнес-логики
   tasks: Task[]
   setTasks: (tasks: Task[]) => void
-  addTask: (task: Omit<Task, 'id' | 'created_at' | 'updated_at'>) => void
-  updateTask: (id: string, updates: Partial<Task>) => void
-  deleteTask: (id: string) => void
   
-  // Recurring tasks
+  // Recurring tasks - ✅ ТОЛЬКО setters
   recurringTasks: RecurringTask[]
   setRecurringTasks: (tasks: RecurringTask[]) => void
-  addRecurringTask: (task: Omit<RecurringTask, 'id' | 'created_at' | 'updated_at'>) => void
-  updateRecurringTask: (id: string, updates: Partial<RecurringTask>) => void
-  deleteRecurringTask: (id: string) => void
   
-  // Task completions
+  // Task completions - ✅ ТОЛЬКО setters
   taskCompletions: TaskCompletion[]
   setTaskCompletions: (completions: TaskCompletion[]) => void
   
@@ -70,61 +64,15 @@ export const useAppStore = create<AppState>((set, get) => ({
   selectedDate: new Date().toISOString().split('T')[0],
   setSelectedDate: (date) => set({ selectedDate: date }),
   
-  // Tasks
+  // ✅ Tasks - ТОЛЬКО state management, БЕЗ бизнес-логики
   tasks: [],
   setTasks: (tasks) => set({ tasks }),
-  addTask: (task) => {
-    const newTask: Task = {
-      ...task,
-      id: crypto.randomUUID(),
-      created_at: new Date().toISOString(),
-      updated_at: new Date().toISOString(),
-    }
-    set((state) => ({ tasks: [...state.tasks, newTask] }))
-  },
-  updateTask: (id, updates) => {
-    set((state) => ({
-      tasks: state.tasks.map((task) =>
-        task.id === id
-          ? { ...task, ...updates, updated_at: new Date().toISOString() }
-          : task
-      ),
-    }))
-  },
-  deleteTask: (id) => {
-    set((state) => ({
-      tasks: state.tasks.filter((task) => task.id !== id),
-    }))
-  },
   
-  // Recurring tasks
+  // ✅ Recurring tasks - ТОЛЬКО state management
   recurringTasks: [],
   setRecurringTasks: (tasks) => set({ recurringTasks: tasks }),
-  addRecurringTask: (task) => {
-    const newTask: RecurringTask = {
-      ...task,
-      id: crypto.randomUUID(),
-      created_at: new Date().toISOString(),
-      updated_at: new Date().toISOString(),
-    }
-    set((state) => ({ recurringTasks: [...state.recurringTasks, newTask] }))
-  },
-  updateRecurringTask: (id, updates) => {
-    set((state) => ({
-      recurringTasks: state.recurringTasks.map((task) =>
-        task.id === id
-          ? { ...task, ...updates, updated_at: new Date().toISOString() }
-          : task
-      ),
-    }))
-  },
-  deleteRecurringTask: (id) => {
-    set((state) => ({
-      recurringTasks: state.recurringTasks.filter((task) => task.id !== id),
-    }))
-  },
   
-  // Task completions
+  // ✅ Task completions - ТОЛЬКО state management
   taskCompletions: [],
   setTaskCompletions: (completions) => set({ taskCompletions: completions }),
   

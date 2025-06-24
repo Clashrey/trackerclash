@@ -6,6 +6,10 @@ import bcrypt from 'bcryptjs';
 // Simple in-memory store for demonstration purposes
 const users = new Map();
 
+function createDefaultCharacter() {
+  return { level: 1, hp: 20, attack: 5 };
+}
+
 const app = express();
 // eslint-disable-next-line no-undef
 const PORT = process.env.PORT || 3001;
@@ -25,7 +29,8 @@ app.post('/register', async (req, res) => {
     return res.status(409).json({ error: 'user already exists' });
   }
   const passwordHash = await bcrypt.hash(password, 10);
-  users.set(username, { passwordHash });
+  const character = createDefaultCharacter();
+  users.set(username, { passwordHash, character });
   res.json({ message: 'registered' });
 });
 
@@ -43,6 +48,43 @@ app.post('/login', async (req, res) => {
     return res.status(401).json({ error: 'invalid credentials' });
   }
   res.json({ message: 'logged in' });
+});
+
+app.get('/character/:username', (req, res) => {
+  const { username } = req.params;
+  const user = users.get(username);
+  if (!user) {
+    return res.status(404).json({ error: 'user not found' });
+  }
+  res.json({ character: user.character });
+});
+
+app.post('/battle', (req, res) => {
+  const { username } = req.body;
+  if (!username) {
+    return res.status(400).json({ error: 'username required' });
+  }
+  const user = users.get(username);
+  if (!user) {
+    return res.status(404).json({ error: 'user not found' });
+  }
+  const enemy = { name: 'rat', hp: 10, attack: 2 };
+  let playerHp = user.character.hp;
+  let enemyHp = enemy.hp;
+  const log = [];
+  while (playerHp > 0 && enemyHp > 0) {
+    enemyHp -= user.character.attack;
+    log.push(`player hits ${enemy.name}`);
+    if (enemyHp <= 0) break;
+    playerHp -= enemy.attack;
+    log.push(`${enemy.name} hits player`);
+  }
+  const victory = playerHp > 0;
+  if (victory) {
+    user.character.level += 1;
+  }
+  user.character.hp = Math.max(playerHp, 0);
+  res.json({ victory, log, character: user.character });
 });
 
 app.listen(PORT, () => {

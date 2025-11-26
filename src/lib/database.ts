@@ -579,6 +579,18 @@ class DatabaseService {
         return null
       }
 
+      // Получаем максимальный order_index для задач на этот день
+      const { data: existingTasks } = await supabase
+        .from('tasks')
+        .select('order_index')
+        .eq('user_id', userId)
+        .eq('category', 'today')
+        .eq('date', date)
+        .order('order_index', { ascending: false })
+        .limit(1)
+
+      const maxOrderIndex = existingTasks?.[0]?.order_index ?? -1
+
       // Создаём копию в "Сегодня" со ссылкой на оригинал
       const { data, error } = await supabase
         .from('tasks')
@@ -587,7 +599,7 @@ class DatabaseService {
           category: 'today',
           date: date,
           completed: false,
-          order_index: Date.now(),
+          order_index: maxOrderIndex + 1,
           source_task_id: taskId,  // Ссылка на оригинал
           user_id: userId
         }])

@@ -84,8 +84,9 @@ export function AuthProvider({ children }: AuthProviderProps) {
 
         console.log('✅ Setting user object:', userObj)
         setUser(userObj)
-        console.log('✅ Setting userId in store:', userData.user_id)
-        setUserId(userData.user_id)
+        // ✅ Используем id вместо user_id для совместимости с существующими задачами
+        console.log('✅ Setting userId in store:', userData.id)
+        setUserId(userData.id)
       } else {
         console.log('🔍 No valid API key found')
       }

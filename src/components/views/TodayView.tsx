@@ -5,11 +5,10 @@ import { AddTaskForm } from '../AddTaskForm'
 import { TaskItem } from '../TaskItem'
 import { ProgressBar } from '../ProgressBar'
 import { DateNavigation } from '../DateNavigation'
-import { Task, RecurringTask } from '../../lib/database'
 
 export function TodayView() {
-  const { tasks, recurringTasks, selectedDate, taskCompletions, setTasks } = useAppStore()
-  const { updateTask, deleteTask, addTaskCompletion, removeTaskCompletion } = useDatabase()
+  const { tasks, recurringTasks, selectedDate, taskCompletions, subtasks } = useAppStore()
+  const { updateTask, deleteTask, addTaskCompletion, removeTaskCompletion, addSubtask, updateSubtask, deleteSubtask } = useDatabase()
 
   // Получаем обычные задачи на сегодня (отсортированные)
   const todayTasks = tasks
@@ -35,7 +34,7 @@ export function TodayView() {
     .map(rt => ({
       ...rt,
       isRecurring: true as const,
-      completed: taskCompletions.some(tc => 
+      completed: taskCompletions.some(tc =>
         tc.recurring_task_id === rt.id && tc.date === selectedDate
       ),
       category: 'today' as const,
@@ -51,26 +50,21 @@ export function TodayView() {
     // Проверяем, это регулярная задача или обычная
     const regularTask = todayRecurringTasks.find(t => t.id === taskId)
     if (regularTask) {
-      // ✅ ИСПРАВЛЕНО: Регулярная задача
+      // Регулярная задача
       if (regularTask.completed) {
-        // Удаляем completion для регулярной задачи
         await removeTaskCompletion(null, taskId, selectedDate)
       } else {
-        // Добавляем completion для регулярной задачи
         await addTaskCompletion(null, taskId, selectedDate)
       }
     } else {
-      // ✅ ИСПРАВЛЕНО: Обычная задача
+      // Обычная задача
       const task = todayTasks.find(t => t.id === taskId)
       if (task) {
         if (task.completed) {
-          // Удаляем completion для обычной задачи
           await removeTaskCompletion(taskId, null, selectedDate)
         } else {
-          // Добавляем completion для обычной задачи
           await addTaskCompletion(taskId, null, selectedDate)
         }
-        // Также обновляем поле completed в самой задаче
         await updateTask(taskId, { completed: !task.completed })
       }
     }
@@ -88,13 +82,10 @@ export function TodayView() {
     const task = todayTasks[taskIndex]
     const prevTask = todayTasks[taskIndex - 1]
 
-    // Меняем order_index местами
     await Promise.all([
       updateTask(task.id, { order_index: prevTask.order_index }),
       updateTask(prevTask.id, { order_index: task.order_index })
     ])
-
-    console.log(`Moved task ${taskId} up`)
   }, [todayTasks, updateTask])
 
   const handleMoveTaskDown = useCallback(async (taskId: string) => {
@@ -104,30 +95,50 @@ export function TodayView() {
     const task = todayTasks[taskIndex]
     const nextTask = todayTasks[taskIndex + 1]
 
-    // Меняем order_index местами
     await Promise.all([
       updateTask(task.id, { order_index: nextTask.order_index }),
       updateTask(nextTask.id, { order_index: task.order_index })
     ])
-
-    console.log(`Moved task ${taskId} down`)
   }, [todayTasks, updateTask])
+
+  // Subtask handlers
+  const handleAddSubtask = useCallback(async (taskId: string, title: string) => {
+    const currentSubtasks = useAppStore.getState().subtasks.filter(s => s.task_id === taskId)
+    const maxOrderIndex = currentSubtasks.length > 0
+      ? Math.max(...currentSubtasks.map(s => s.order_index))
+      : -1
+
+    await addSubtask({
+      task_id: taskId,
+      title,
+      completed: false,
+      order_index: maxOrderIndex + 1
+    })
+  }, [addSubtask])
+
+  const handleToggleSubtask = useCallback(async (subtaskId: string, completed: boolean) => {
+    await updateSubtask(subtaskId, { completed })
+  }, [updateSubtask])
+
+  const handleDeleteSubtask = useCallback(async (subtaskId: string) => {
+    await deleteSubtask(subtaskId)
+  }, [deleteSubtask])
 
   return (
     <div className="space-y-6">
       <DateNavigation />
-      
-      <ProgressBar 
-        completed={completedTasks} 
-        total={totalTasks} 
-        progress={progress} 
+
+      <ProgressBar
+        completed={completedTasks}
+        total={totalTasks}
+        progress={progress}
       />
 
       <div className="space-y-6">
         <h2 className="text-xl font-bold text-gray-900">
-          Задачи на {new Date(selectedDate).toLocaleDateString('ru-RU', { 
-            day: 'numeric', 
-            month: 'long' 
+          Задачи на {new Date(selectedDate).toLocaleDateString('ru-RU', {
+            day: 'numeric',
+            month: 'long'
           })}
         </h2>
 
@@ -147,7 +158,7 @@ export function TodayView() {
                   task={task}
                   onToggle={handleToggleTask}
                   onDelete={handleDeleteTask}
-                  showMoveButtons={false} // Регулярные задачи не перемещаются здесь
+                  showMoveButtons={false}
                 />
               ))}
             </div>
@@ -179,10 +190,14 @@ export function TodayView() {
                 <TaskItem
                   key={task.id}
                   task={task}
+                  subtasks={subtasks}
                   onToggle={handleToggleTask}
                   onDelete={handleDeleteTask}
                   onMoveUp={handleMoveTaskUp}
                   onMoveDown={handleMoveTaskDown}
+                  onAddSubtask={handleAddSubtask}
+                  onToggleSubtask={handleToggleSubtask}
+                  onDeleteSubtask={handleDeleteSubtask}
                   showMoveButtons={todayTasks.length > 1}
                   isFirst={index === 0}
                   isLast={index === todayTasks.length - 1}

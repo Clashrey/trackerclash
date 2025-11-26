@@ -5,9 +5,9 @@ import { TaskItem } from '@/components/TaskItem'
 import { AddTaskForm } from '@/components/AddTaskForm'
 
 export const IdeasView: React.FC = () => {
-  const { tasks } = useAppStore()
-  const { updateTask, deleteTask } = useDatabase()
-  
+  const { tasks, subtasks } = useAppStore()
+  const { updateTask, deleteTask, addSubtask, updateSubtask, deleteSubtask } = useDatabase()
+
   const ideasList = tasks
     .filter(task => task.category === 'ideas')
     .sort((a, b) => a.order_index - b.order_index)
@@ -30,13 +30,10 @@ export const IdeasView: React.FC = () => {
     const task = ideasList[taskIndex]
     const prevTask = ideasList[taskIndex - 1]
 
-    // Меняем order_index местами
     await Promise.all([
       updateTask(task.id, { order_index: prevTask.order_index }),
       updateTask(prevTask.id, { order_index: task.order_index })
     ])
-
-    console.log(`Moved idea ${taskId} up`)
   }, [ideasList, updateTask])
 
   const handleMoveTaskDown = useCallback(async (taskId: string) => {
@@ -46,14 +43,34 @@ export const IdeasView: React.FC = () => {
     const task = ideasList[taskIndex]
     const nextTask = ideasList[taskIndex + 1]
 
-    // Меняем order_index местами
     await Promise.all([
       updateTask(task.id, { order_index: nextTask.order_index }),
       updateTask(nextTask.id, { order_index: task.order_index })
     ])
-
-    console.log(`Moved idea ${taskId} down`)
   }, [ideasList, updateTask])
+
+  // Subtask handlers
+  const handleAddSubtask = useCallback(async (taskId: string, title: string) => {
+    const currentSubtasks = useAppStore.getState().subtasks.filter(s => s.task_id === taskId)
+    const maxOrderIndex = currentSubtasks.length > 0
+      ? Math.max(...currentSubtasks.map(s => s.order_index))
+      : -1
+
+    await addSubtask({
+      task_id: taskId,
+      title,
+      completed: false,
+      order_index: maxOrderIndex + 1
+    })
+  }, [addSubtask])
+
+  const handleToggleSubtask = useCallback(async (subtaskId: string, completed: boolean) => {
+    await updateSubtask(subtaskId, { completed })
+  }, [updateSubtask])
+
+  const handleDeleteSubtask = useCallback(async (subtaskId: string) => {
+    await deleteSubtask(subtaskId)
+  }, [deleteSubtask])
 
   return (
     <div className="space-y-6">
@@ -77,10 +94,14 @@ export const IdeasView: React.FC = () => {
               <TaskItem
                 key={task.id}
                 task={task}
+                subtasks={subtasks}
                 onToggle={handleToggleTask}
                 onDelete={handleDeleteTask}
                 onMoveUp={handleMoveTaskUp}
                 onMoveDown={handleMoveTaskDown}
+                onAddSubtask={handleAddSubtask}
+                onToggleSubtask={handleToggleSubtask}
+                onDeleteSubtask={handleDeleteSubtask}
                 showMoveButtons={ideasList.length > 1}
                 isFirst={index === 0}
                 isLast={index === ideasList.length - 1}
@@ -90,8 +111,8 @@ export const IdeasView: React.FC = () => {
         )}
       </div>
 
-      <AddTaskForm 
-        category="ideas" 
+      <AddTaskForm
+        category="ideas"
         placeholder="Добавить новую идею..."
       />
     </div>

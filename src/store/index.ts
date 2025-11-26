@@ -1,5 +1,5 @@
 import { create } from 'zustand'
-import { Task, RecurringTask, TaskCategory } from '@/types'
+import { Task, RecurringTask, TaskCategory, Subtask } from '@/types'
 
 interface TaskCompletion {
   id: string
@@ -38,7 +38,11 @@ interface AppState {
   // ✅ Task completions - ТОЛЬКО setters
   taskCompletions: TaskCompletion[]
   setTaskCompletions: (completions: TaskCompletion[]) => void
-  
+
+  // ✅ Subtasks
+  subtasks: Subtask[]
+  setSubtasks: (subtasks: Subtask[]) => void
+
   // Loading states
   isLoading: boolean
   setIsLoading: (loading: boolean) => void
@@ -75,7 +79,11 @@ export const useAppStore = create<AppState>((set, get) => ({
   // ✅ Task completions - ТОЛЬКО state management
   taskCompletions: [],
   setTaskCompletions: (completions) => set({ taskCompletions: completions }),
-  
+
+  // ✅ Subtasks - ТОЛЬКО state management
+  subtasks: [],
+  setSubtasks: (subtasks) => set({ subtasks }),
+
   // Loading states
   isLoading: false,
   setIsLoading: (loading) => set({ isLoading: loading }),

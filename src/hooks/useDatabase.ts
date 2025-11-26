@@ -7,6 +7,7 @@ export function useDatabase() {
     setTasks,
     setRecurringTasks,
     setTaskCompletions,
+    setSubtasks,
     userId
   } = useAppStore()
 
@@ -20,15 +21,17 @@ export function useDatabase() {
       // Сначала очищаем старые задачи "Сегодня" (старше 30 дней)
       await databaseService.cleanupOldTodayTasks()
 
-      const [tasksData, recurringTasksData, completionsData] = await Promise.all([
+      const [tasksData, recurringTasksData, completionsData, subtasksData] = await Promise.all([
         databaseService.getTasks(),
         databaseService.getRecurringTasks(),
-        databaseService.getTaskCompletions()
+        databaseService.getTaskCompletions(),
+        databaseService.getSubtasks()
       ])
 
       setTasks(tasksData)
       setRecurringTasks(recurringTasksData)
       setTaskCompletions(completionsData)
+      setSubtasks(subtasksData)
     } catch (error) {
       console.error('Error loading data:', error)
     }
@@ -145,30 +148,78 @@ export function useDatabase() {
 
   // ✅ НОВАЯ функция для проверки выполнения
   const isTaskCompleted = async (
-    taskId: string | null, 
-    recurringTaskId: string | null, 
+    taskId: string | null,
+    recurringTaskId: string | null,
     date: string
   ) => {
     return await databaseService.isTaskCompleted(taskId, recurringTaskId, date)
   }
 
+  // ========== SUBTASKS ==========
+
+  const addSubtask = useCallback(async (subtask: Parameters<typeof databaseService.addSubtask>[0]) => {
+    const newSubtask = await databaseService.addSubtask(subtask)
+    if (newSubtask) {
+      const currentSubtasks = getState().subtasks
+      setSubtasks([...currentSubtasks, newSubtask])
+    }
+    return newSubtask
+  }, [setSubtasks])
+
+  const updateSubtask = useCallback(async (id: string, updates: Parameters<typeof databaseService.updateSubtask>[1]) => {
+    const updatedSubtask = await databaseService.updateSubtask(id, updates)
+    if (updatedSubtask) {
+      const currentSubtasks = getState().subtasks
+      setSubtasks(currentSubtasks.map(s => s.id === id ? updatedSubtask : s))
+    }
+    return updatedSubtask
+  }, [setSubtasks])
+
+  const deleteSubtask = useCallback(async (id: string) => {
+    const success = await databaseService.deleteSubtask(id)
+    if (success) {
+      const currentSubtasks = getState().subtasks
+      setSubtasks(currentSubtasks.filter(s => s.id !== id))
+    }
+    return success
+  }, [setSubtasks])
+
+  // ========== MOVE TASK TO TODAY ==========
+
+  const moveTaskToToday = useCallback(async (taskId: string, date: string) => {
+    const updatedTask = await databaseService.moveTaskToToday(taskId, date)
+    if (updatedTask) {
+      const currentTasks = getState().tasks
+      setTasks(currentTasks.map(t => t.id === taskId ? updatedTask : t))
+    }
+    return updatedTask
+  }, [setTasks])
+
   return {
     // Data loading
     loadAllData,
-    
+
     // Tasks
     addTask,
     updateTask,
     deleteTask,
-    
+
     // Recurring Tasks
     addRecurringTask,
     updateRecurringTask,
     deleteRecurringTask,
-    
+
     // Task Completions
     addTaskCompletion,
     removeTaskCompletion,
-    isTaskCompleted
+    isTaskCompleted,
+
+    // Subtasks
+    addSubtask,
+    updateSubtask,
+    deleteSubtask,
+
+    // Move task
+    moveTaskToToday
   }
 }

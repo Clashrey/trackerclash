@@ -33,6 +33,17 @@ export interface TaskCompletion {
   created_at: string
 }
 
+export interface Subtask {
+  id: string
+  task_id: string
+  user_id: string
+  title: string
+  completed: boolean
+  order_index: number
+  created_at: string
+  updated_at: string
+}
+
 class DatabaseService {
   private getCurrentUserId(): string | null {
     // ✅ Берём userId напрямую из Zustand store, без localStorage
@@ -407,8 +418,8 @@ class DatabaseService {
 
   // ✅ НОВАЯ функция для проверки выполнения задачи
   async isTaskCompleted(
-    taskId: string | null, 
-    recurringTaskId: string | null, 
+    taskId: string | null,
+    recurringTaskId: string | null,
     date: string
   ): Promise<boolean> {
     const userId = this.getCurrentUserId()
@@ -440,6 +451,141 @@ class DatabaseService {
     } catch (error) {
       console.error('Error in isTaskCompleted:', error)
       return false
+    }
+  }
+
+  // ========== SUBTASKS ==========
+
+  async getSubtasks(taskId?: string): Promise<Subtask[]> {
+    const userId = this.getCurrentUserId()
+    if (!userId) return []
+
+    try {
+      let query = supabase
+        .from('subtasks')
+        .select('*')
+        .eq('user_id', userId)
+        .order('order_index')
+
+      if (taskId) {
+        query = query.eq('task_id', taskId)
+      }
+
+      const { data, error } = await query
+
+      if (error) {
+        console.error('Error fetching subtasks:', error)
+        return []
+      }
+
+      return data || []
+    } catch (error) {
+      console.error('Error in getSubtasks:', error)
+      return []
+    }
+  }
+
+  async addSubtask(subtask: Omit<Subtask, 'id' | 'user_id' | 'created_at' | 'updated_at'>): Promise<Subtask | null> {
+    const userId = this.getCurrentUserId()
+    if (!userId) return null
+
+    try {
+      const { data, error } = await supabase
+        .from('subtasks')
+        .insert([{
+          ...subtask,
+          user_id: userId
+        }])
+        .select()
+        .single()
+
+      if (error) {
+        console.error('Error adding subtask:', error)
+        return null
+      }
+
+      return data
+    } catch (error) {
+      console.error('Error in addSubtask:', error)
+      return null
+    }
+  }
+
+  async updateSubtask(id: string, updates: Partial<Subtask>): Promise<Subtask | null> {
+    const userId = this.getCurrentUserId()
+    if (!userId) return null
+
+    try {
+      const { data, error } = await supabase
+        .from('subtasks')
+        .update(updates)
+        .eq('id', id)
+        .eq('user_id', userId)
+        .select()
+        .single()
+
+      if (error) {
+        console.error('Error updating subtask:', error)
+        return null
+      }
+
+      return data
+    } catch (error) {
+      console.error('Error in updateSubtask:', error)
+      return null
+    }
+  }
+
+  async deleteSubtask(id: string): Promise<boolean> {
+    const userId = this.getCurrentUserId()
+    if (!userId) return false
+
+    try {
+      const { error } = await supabase
+        .from('subtasks')
+        .delete()
+        .eq('id', id)
+        .eq('user_id', userId)
+
+      if (error) {
+        console.error('Error deleting subtask:', error)
+        return false
+      }
+
+      return true
+    } catch (error) {
+      console.error('Error in deleteSubtask:', error)
+      return false
+    }
+  }
+
+  // Перенос задачи из ЗАДАЧИ в СЕГОДНЯ
+  async moveTaskToToday(taskId: string, date: string): Promise<Task | null> {
+    const userId = this.getCurrentUserId()
+    if (!userId) return null
+
+    try {
+      const { data, error } = await supabase
+        .from('tasks')
+        .update({
+          category: 'today',
+          date: date,
+          completed: false
+        })
+        .eq('id', taskId)
+        .eq('user_id', userId)
+        .select()
+        .single()
+
+      if (error) {
+        console.error('Error moving task to today:', error)
+        return null
+      }
+
+      return data
+    } catch (error) {
+      console.error('Error in moveTaskToToday:', error)
+      return null
     }
   }
 }

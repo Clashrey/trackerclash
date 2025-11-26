@@ -10,6 +10,17 @@ export interface Task {
   updated_at: string
 }
 
+export interface Subtask {
+  id: string
+  task_id: string
+  user_id: string
+  title: string
+  completed: boolean
+  order_index: number
+  created_at: string
+  updated_at: string
+}
+
 export interface RecurringTask {
   id: string
   user_id: string

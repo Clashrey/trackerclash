@@ -1,4 +1,5 @@
 import { supabase } from './supabase'
+import { useAppStore } from '../store'
 
 export interface Task {
   id: string
@@ -23,7 +24,6 @@ export interface RecurringTask {
   updated_at: string
 }
 
-// ✅ ИСПРАВЛЕННЫЙ интерфейс TaskCompletion
 export interface TaskCompletion {
   id: string
   task_id?: string | null
@@ -34,47 +34,19 @@ export interface TaskCompletion {
 }
 
 class DatabaseService {
-  private async getCurrentUserId(): Promise<string | null> {
-    const apiKey = localStorage.getItem('tracker_api_key')
-    console.log('🔍 getCurrentUserId - API Key from localStorage:', apiKey)
-    if (!apiKey) return null
-
-    try {
-      const { data, error } = await supabase
-        .from('users')
-        .select('id')  // ✅ ИСПРАВЛЕНО: возвращаем id вместо user_id
-        .eq('api_key', apiKey)
-
-      console.log('🔍 Supabase query result:', { data, error })
-
-      if (error) {
-        console.error('❌ Database error:', error)
-        return null
-      }
-
-      if (!data || data.length === 0) {
-        console.error('❌ No user found for API key:', apiKey)
-        return null
-      }
-
-      if (data.length > 1) {
-        console.error('❌ Multiple users found for API key:', apiKey)
-        return null
-      }
-
-      const user = data[0]
-      console.log('✅ Found user:', user)
-      console.log('✅ Returning id:', user.id)  // ✅ ИСПРАВЛЕНО: возвращаем id
-      return user.id  // ✅ ИСПРАВЛЕНО: возвращаем id
-    } catch (error) {
-      console.error('❌ Exception in getCurrentUserId:', error)
+  private getCurrentUserId(): string | null {
+    // ✅ Берём userId напрямую из Zustand store, без localStorage
+    const userId = useAppStore.getState().userId
+    if (!userId) {
+      console.error('❌ No userId in store')
       return null
     }
+    return userId
   }
 
   // Tasks
   async getTasks(): Promise<Task[]> {
-    const userId = await this.getCurrentUserId()
+    const userId = this.getCurrentUserId()
     if (!userId) return []
 
     try {
@@ -97,7 +69,7 @@ class DatabaseService {
   }
 
   async addTask(task: Omit<Task, 'id' | 'user_id' | 'created_at' | 'updated_at'>): Promise<Task | null> {
-    const userId = await this.getCurrentUserId()
+    const userId = this.getCurrentUserId()
     if (!userId) return null
 
     try {
@@ -123,7 +95,7 @@ class DatabaseService {
   }
 
   async updateTask(id: string, updates: Partial<Task>): Promise<Task | null> {
-    const userId = await this.getCurrentUserId()
+    const userId = this.getCurrentUserId()
     if (!userId) return null
 
     try {
@@ -148,7 +120,7 @@ class DatabaseService {
   }
 
   async deleteTask(id: string): Promise<boolean> {
-    const userId = await this.getCurrentUserId()
+    const userId = this.getCurrentUserId()
     if (!userId) return false
 
     try {
@@ -172,7 +144,7 @@ class DatabaseService {
 
   // Recurring Tasks
   async getRecurringTasks(): Promise<RecurringTask[]> {
-    const userId = await this.getCurrentUserId()
+    const userId = this.getCurrentUserId()
     if (!userId) return []
 
     try {
@@ -195,7 +167,7 @@ class DatabaseService {
   }
 
   async addRecurringTask(task: Omit<RecurringTask, 'id' | 'user_id' | 'created_at' | 'updated_at'>): Promise<RecurringTask | null> {
-    const userId = await this.getCurrentUserId()
+    const userId = this.getCurrentUserId()
     if (!userId) return null
 
     try {
@@ -221,7 +193,7 @@ class DatabaseService {
   }
 
   async updateRecurringTask(id: string, updates: Partial<RecurringTask>): Promise<RecurringTask | null> {
-    const userId = await this.getCurrentUserId()
+    const userId = this.getCurrentUserId()
     if (!userId) return null
 
     try {
@@ -246,7 +218,7 @@ class DatabaseService {
   }
 
   async deleteRecurringTask(id: string): Promise<boolean> {
-    const userId = await this.getCurrentUserId()
+    const userId = this.getCurrentUserId()
     if (!userId) return false
 
     try {
@@ -270,7 +242,7 @@ class DatabaseService {
 
   // ✅ ИСПРАВЛЕННЫЕ функции Task Completions
   async getTaskCompletions(): Promise<TaskCompletion[]> {
-    const userId = await this.getCurrentUserId()
+    const userId = this.getCurrentUserId()
     if (!userId) return []
 
     try {
@@ -298,7 +270,7 @@ class DatabaseService {
     recurringTaskId: string | null, 
     date: string
   ): Promise<TaskCompletion | null> {
-    const userId = await this.getCurrentUserId()
+    const userId = this.getCurrentUserId()
     console.log('🔍 addTaskCompletion - userId:', userId) // Отладка
     if (!userId) return null
 
@@ -348,7 +320,7 @@ class DatabaseService {
     recurringTaskId: string | null, 
     date: string
   ): Promise<boolean> {
-    const userId = await this.getCurrentUserId()
+    const userId = this.getCurrentUserId()
     if (!userId) return false
 
     try {
@@ -387,7 +359,7 @@ class DatabaseService {
     recurringTaskId: string | null, 
     date: string
   ): Promise<boolean> {
-    const userId = await this.getCurrentUserId()
+    const userId = this.getCurrentUserId()
     if (!userId) return false
 
     try {

@@ -1,16 +1,16 @@
-import { useEffect } from 'react'
+import { useEffect, useCallback } from 'react'
 import { useAppStore } from '../store'
 import { databaseService } from '../lib/database'
 
 export function useDatabase() {
-  const { 
-    setTasks, 
-    setRecurringTasks, 
-    setTaskCompletions,
-    tasks, 
-    recurringTasks,
-    taskCompletions
+  const {
+    setTasks,
+    setRecurringTasks,
+    setTaskCompletions
   } = useAppStore()
+
+  // ✅ Получаем актуальные данные напрямую из store, чтобы избежать stale closures
+  const getState = () => useAppStore.getState()
 
   // Загрузка данных при инициализации
   useEffect(() => {
@@ -34,92 +34,100 @@ export function useDatabase() {
   }
 
   // Tasks
-  const addTask = async (task: Parameters<typeof databaseService.addTask>[0]) => {
+  const addTask = useCallback(async (task: Parameters<typeof databaseService.addTask>[0]) => {
     const newTask = await databaseService.addTask(task)
     if (newTask) {
-      setTasks([...tasks, newTask])
+      // ✅ Используем getState() для получения актуального состояния
+      const currentTasks = getState().tasks
+      setTasks([...currentTasks, newTask])
     }
     return newTask
-  }
+  }, [setTasks])
 
-  const updateTask = async (id: string, updates: Parameters<typeof databaseService.updateTask>[1]) => {
+  const updateTask = useCallback(async (id: string, updates: Parameters<typeof databaseService.updateTask>[1]) => {
     const updatedTask = await databaseService.updateTask(id, updates)
-    
+
     if (updatedTask) {
-      // ✅ Просто обновляем состояние, БЕЗ перезагрузки
-      const updatedTasks = tasks.map(t => 
+      // ✅ Используем getState() для получения актуального состояния
+      const currentTasks = getState().tasks
+      const updatedTasks = currentTasks.map(t =>
         t.id === id ? { ...updatedTask } : { ...t }
       )
       setTasks(updatedTasks)
     }
     return updatedTask
-  }
+  }, [setTasks])
 
-  const deleteTask = async (id: string) => {
+  const deleteTask = useCallback(async (id: string) => {
     const success = await databaseService.deleteTask(id)
     if (success) {
-      setTasks(tasks.filter(t => t.id !== id))
+      // ✅ Используем getState() для получения актуального состояния
+      const currentTasks = getState().tasks
+      setTasks(currentTasks.filter(t => t.id !== id))
     }
     return success
-  }
+  }, [setTasks])
 
   // Recurring Tasks
-  const addRecurringTask = async (task: Parameters<typeof databaseService.addRecurringTask>[0]) => {
+  const addRecurringTask = useCallback(async (task: Parameters<typeof databaseService.addRecurringTask>[0]) => {
     const newTask = await databaseService.addRecurringTask(task)
     if (newTask) {
-      setRecurringTasks([...recurringTasks, newTask])
+      const currentRecurringTasks = getState().recurringTasks
+      setRecurringTasks([...currentRecurringTasks, newTask])
     }
     return newTask
-  }
+  }, [setRecurringTasks])
 
-  const updateRecurringTask = async (id: string, updates: Parameters<typeof databaseService.updateRecurringTask>[1]) => {
+  const updateRecurringTask = useCallback(async (id: string, updates: Parameters<typeof databaseService.updateRecurringTask>[1]) => {
     const updatedTask = await databaseService.updateRecurringTask(id, updates)
-    
+
     if (updatedTask) {
-      // ✅ Просто обновляем состояние, БЕЗ перезагрузки
-      const updatedTasks = recurringTasks.map(t => 
+      const currentRecurringTasks = getState().recurringTasks
+      const updatedTasks = currentRecurringTasks.map(t =>
         t.id === id ? { ...updatedTask } : { ...t }
       )
       setRecurringTasks(updatedTasks)
     }
     return updatedTask
-  }
+  }, [setRecurringTasks])
 
-  const deleteRecurringTask = async (id: string) => {
+  const deleteRecurringTask = useCallback(async (id: string) => {
     const success = await databaseService.deleteRecurringTask(id)
     if (success) {
-      setRecurringTasks(recurringTasks.filter(t => t.id !== id))
+      const currentRecurringTasks = getState().recurringTasks
+      const currentTaskCompletions = getState().taskCompletions
+      setRecurringTasks(currentRecurringTasks.filter(t => t.id !== id))
       // Также удаляем все связанные выполнения
-      setTaskCompletions(taskCompletions.filter(tc => tc.recurring_task_id !== id))
+      setTaskCompletions(currentTaskCompletions.filter(tc => tc.recurring_task_id !== id))
     }
     return success
-  }
+  }, [setRecurringTasks, setTaskCompletions])
 
   // ✅ ИСПРАВЛЕННЫЕ Task Completions
-  const addTaskCompletion = async (
-    taskId: string | null, 
-    recurringTaskId: string | null, 
+  const addTaskCompletion = useCallback(async (
+    taskId: string | null,
+    recurringTaskId: string | null,
     date: string
   ) => {
     const newCompletion = await databaseService.addTaskCompletion(taskId, recurringTaskId, date)
-    
+
     if (newCompletion) {
-      // ✅ Просто обновляем состояние, БЕЗ перезагрузки
-      const updatedCompletions = [...taskCompletions, { ...newCompletion }]
-      setTaskCompletions(updatedCompletions)
+      const currentTaskCompletions = getState().taskCompletions
+      setTaskCompletions([...currentTaskCompletions, { ...newCompletion }])
     }
     return newCompletion
-  }
+  }, [setTaskCompletions])
 
-  const removeTaskCompletion = async (
-    taskId: string | null, 
-    recurringTaskId: string | null, 
+  const removeTaskCompletion = useCallback(async (
+    taskId: string | null,
+    recurringTaskId: string | null,
     date: string
   ) => {
     const success = await databaseService.removeTaskCompletion(taskId, recurringTaskId, date)
-    
+
     if (success) {
-      const filteredCompletions = taskCompletions.filter(tc => {
+      const currentTaskCompletions = getState().taskCompletions
+      const filteredCompletions = currentTaskCompletions.filter(tc => {
         // Удаляем completion для конкретной задачи и даты
         if (taskId && tc.task_id === taskId && tc.date === date) {
           return false
@@ -132,7 +140,7 @@ export function useDatabase() {
       setTaskCompletions(filteredCompletions)
     }
     return success
-  }
+  }, [setTaskCompletions])
 
   // ✅ НОВАЯ функция для проверки выполнения
   const isTaskCompleted = async (

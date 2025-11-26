@@ -17,34 +17,37 @@ export const AddTaskForm: React.FC<AddTaskFormProps> = ({
   placeholder = 'Новая задача...',
   className
 }) => {
-  const { userId, selectedDate, tasks } = useAppStore()
+  const { userId, selectedDate } = useAppStore()
   const { addTask } = useDatabase()
   const [title, setTitle] = useState('')
   const [isExpanded, setIsExpanded] = useState(false)
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    
+
     if (!title.trim() || !userId) return
 
     const taskDate = date ? date.toISOString().split('T')[0] : (category === 'today' ? selectedDate : undefined)
-    
+
+    // ✅ Получаем актуальные задачи напрямую из store
+    const currentTasks = useAppStore.getState().tasks
+
     // Получаем максимальный order_index для данной категории
-    const categoryTasks = tasks.filter(task => 
+    const categoryTasks = currentTasks.filter(task =>
       task.category === (category === 'today' ? 'today' : category) &&
       (!taskDate || task.date === taskDate)
     )
-    const maxOrderIndex = categoryTasks.length > 0 
-      ? Math.max(...categoryTasks.map(t => t.order_index)) 
+    const maxOrderIndex = categoryTasks.length > 0
+      ? Math.max(...categoryTasks.map(t => t.order_index))
       : -1
-    
+
     await addTask({
       user_id: userId,
       title: title.trim(),
       category: category === 'today' ? 'today' : category,
       completed: false,
       date: taskDate,
-      order_index: maxOrderIndex + 1, // ✅ Правильный порядковый номер
+      order_index: maxOrderIndex + 1,
     })
 
     setTitle('')

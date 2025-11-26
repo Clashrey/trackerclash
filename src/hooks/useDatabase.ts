@@ -17,12 +17,15 @@ export function useDatabase() {
 
   const loadAllData = async () => {
     try {
+      // Сначала очищаем старые задачи "Сегодня" (старше 30 дней)
+      await databaseService.cleanupOldTodayTasks()
+
       const [tasksData, recurringTasksData, completionsData] = await Promise.all([
         databaseService.getTasks(),
         databaseService.getRecurringTasks(),
         databaseService.getTaskCompletions()
       ])
-      
+
       setTasks(tasksData)
       setRecurringTasks(recurringTasksData)
       setTaskCompletions(completionsData)

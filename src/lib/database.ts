@@ -44,6 +44,40 @@ class DatabaseService {
     return userId
   }
 
+  // Очистка старых задач из раздела "Сегодня" (старше 30 дней)
+  async cleanupOldTodayTasks(): Promise<number> {
+    const userId = this.getCurrentUserId()
+    if (!userId) return 0
+
+    const thirtyDaysAgo = new Date()
+    thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30)
+    const cutoffDate = thirtyDaysAgo.toISOString()
+
+    try {
+      const { data, error } = await supabase
+        .from('tasks')
+        .delete()
+        .eq('user_id', userId)
+        .eq('category', 'today')
+        .lt('created_at', cutoffDate)
+        .select()
+
+      if (error) {
+        console.error('❌ Error cleaning up old tasks:', error)
+        return 0
+      }
+
+      const deletedCount = data?.length || 0
+      if (deletedCount > 0) {
+        console.log(`🗑️ Deleted ${deletedCount} old "today" tasks`)
+      }
+      return deletedCount
+    } catch (error) {
+      console.error('❌ Exception in cleanupOldTodayTasks:', error)
+      return 0
+    }
+  }
+
   // Tasks
   async getTasks(): Promise<Task[]> {
     const userId = this.getCurrentUserId()

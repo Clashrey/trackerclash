@@ -8,6 +8,14 @@ interface DatePickerModalProps {
   title?: string
 }
 
+// Форматирует дату в YYYY-MM-DD без смещения часового пояса
+function formatDateLocal(date: Date): string {
+  const year = date.getFullYear()
+  const month = String(date.getMonth() + 1).padStart(2, '0')
+  const day = String(date.getDate()).padStart(2, '0')
+  return `${year}-${month}-${day}`
+}
+
 export function DatePickerModal({ isOpen, onClose, onSelect, title = 'Выберите дату' }: DatePickerModalProps) {
   const [currentMonth, setCurrentMonth] = useState(new Date())
 
@@ -48,13 +56,13 @@ export function DatePickerModal({ isOpen, onClose, onSelect, title = 'Выбер
 
   const handleSelectDate = (day: number) => {
     const selectedDate = new Date(year, month, day)
-    const dateStr = selectedDate.toISOString().split('T')[0]
+    const dateStr = formatDateLocal(selectedDate)
     onSelect(dateStr)
     onClose()
   }
 
   const today = new Date()
-  const todayStr = today.toISOString().split('T')[0]
+  const todayStr = formatDateLocal(today)
 
   const monthNames = [
     'Январь', 'Февраль', 'Март', 'Апрель', 'Май', 'Июнь',
@@ -115,7 +123,7 @@ export function DatePickerModal({ isOpen, onClose, onSelect, title = 'Выбер
               return <div key={`empty-${index}`} className="p-2" />
             }
 
-            const dateStr = new Date(year, month, day).toISOString().split('T')[0]
+            const dateStr = formatDateLocal(new Date(year, month, day))
             const isToday = dateStr === todayStr
             const isPast = new Date(year, month, day) < new Date(today.getFullYear(), today.getMonth(), today.getDate())
 
@@ -152,7 +160,7 @@ export function DatePickerModal({ isOpen, onClose, onSelect, title = 'Выбер
             onClick={() => {
               const tomorrow = new Date()
               tomorrow.setDate(tomorrow.getDate() + 1)
-              onSelect(tomorrow.toISOString().split('T')[0])
+              onSelect(formatDateLocal(tomorrow))
               onClose()
             }}
             className="flex-1 px-3 py-2 text-sm font-medium bg-gray-50 text-gray-700 rounded-lg hover:bg-gray-100 transition-colors"

@@ -7,9 +7,7 @@ export function Navigation() {
   const { currentCategory, setCurrentCategory, tasks, recurringTasks, selectedDate } = useAppStore()
 
   // Для "Сегодня" считаем только задачи на выбранную дату
-  const todayTasks = tasks.filter(t => t.category === 'today')
-  console.log('🔍 Navigation - selectedDate:', selectedDate, 'todayTasks dates:', todayTasks.slice(0, 5).map(t => t.date))
-  const todayTasksCount = todayTasks.filter(t => t.date === selectedDate).length
+  const todayTasksCount = tasks.filter(t => t.category === 'today' && t.date === selectedDate).length
 
   const categories = [
     { id: 'today', label: 'Сегодня', count: todayTasksCount },

@@ -8,7 +8,7 @@ import { DateNavigation } from '../DateNavigation'
 
 export function TodayView() {
   const { tasks, recurringTasks, selectedDate, taskCompletions, subtasks } = useAppStore()
-  const { updateTask, deleteTask, addTaskCompletion, removeTaskCompletion, addSubtask, updateSubtask, deleteSubtask } = useDatabase()
+  const { updateTask, deleteTask, addTaskCompletion, removeTaskCompletion, addSubtask, updateSubtask, deleteSubtask, syncTaskCompletion } = useDatabase()
 
   // Получаем обычные задачи на сегодня (отсортированные)
   const todayTasks = tasks
@@ -60,15 +60,21 @@ export function TodayView() {
       // Обычная задача
       const task = todayTasks.find(t => t.id === taskId)
       if (task) {
+        const newCompleted = !task.completed
         if (task.completed) {
           await removeTaskCompletion(taskId, null, selectedDate)
         } else {
           await addTaskCompletion(taskId, null, selectedDate)
         }
-        await updateTask(taskId, { completed: !task.completed })
+        await updateTask(taskId, { completed: newCompleted })
+
+        // Если это копия задачи из ЗАДАЧИ — синхронизируем статус оригинала
+        if (task.source_task_id) {
+          await syncTaskCompletion(taskId, newCompleted)
+        }
       }
     }
-  }, [todayTasks, todayRecurringTasks, selectedDate, updateTask, addTaskCompletion, removeTaskCompletion])
+  }, [todayTasks, todayRecurringTasks, selectedDate, updateTask, addTaskCompletion, removeTaskCompletion, syncTaskCompletion])
 
   const handleDeleteTask = useCallback(async (taskId: string) => {
     await deleteTask(taskId)

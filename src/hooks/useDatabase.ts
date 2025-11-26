@@ -184,15 +184,32 @@ export function useDatabase() {
     return success
   }, [setSubtasks])
 
-  // ========== MOVE TASK TO TODAY ==========
+  // ========== COPY TASK TO TODAY ==========
 
-  const moveTaskToToday = useCallback(async (taskId: string, date: string) => {
-    const updatedTask = await databaseService.moveTaskToToday(taskId, date)
-    if (updatedTask) {
+  const copyTaskToToday = useCallback(async (taskId: string, date: string) => {
+    const newTask = await databaseService.copyTaskToToday(taskId, date)
+    if (newTask) {
       const currentTasks = getState().tasks
-      setTasks(currentTasks.map(t => t.id === taskId ? updatedTask : t))
+      setTasks([...currentTasks, newTask])
     }
-    return updatedTask
+    return newTask
+  }, [setTasks])
+
+  // Синхронизация статуса копии с оригиналом
+  const syncTaskCompletion = useCallback(async (taskId: string, completed: boolean) => {
+    const success = await databaseService.syncTaskCompletion(taskId, completed)
+    if (success) {
+      // Получаем source_task_id из текущей задачи
+      const currentTasks = getState().tasks
+      const task = currentTasks.find(t => t.id === taskId)
+      if (task?.source_task_id) {
+        // Обновляем статус оригинала в локальном store
+        setTasks(currentTasks.map(t =>
+          t.id === task.source_task_id ? { ...t, completed } : t
+        ))
+      }
+    }
+    return success
   }, [setTasks])
 
   return {
@@ -219,7 +236,8 @@ export function useDatabase() {
     updateSubtask,
     deleteSubtask,
 
-    // Move task
-    moveTaskToToday
+    // Copy task to today
+    copyTaskToToday,
+    syncTaskCompletion
   }
 }

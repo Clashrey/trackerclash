@@ -8,6 +8,7 @@ export interface Task {
   category: 'today' | 'tasks' | 'ideas'
   date: string
   order_index: number
+  source_task_id?: string | null  // ID оригинальной задачи из ЗАДАЧИ (для копий в СЕГОДНЯ)
   user_id: string
   created_at: string
   updated_at: string
@@ -559,33 +560,86 @@ class DatabaseService {
     }
   }
 
-  // Перенос задачи из ЗАДАЧИ в СЕГОДНЯ
-  async moveTaskToToday(taskId: string, date: string): Promise<Task | null> {
+  // Копирование задачи из ЗАДАЧИ в СЕГОДНЯ (оригинал остаётся)
+  async copyTaskToToday(taskId: string, date: string): Promise<Task | null> {
     const userId = this.getCurrentUserId()
     if (!userId) return null
 
     try {
-      const { data, error } = await supabase
+      // Сначала получаем оригинальную задачу
+      const { data: originalTask, error: fetchError } = await supabase
         .from('tasks')
-        .update({
-          category: 'today',
-          date: date,
-          completed: false
-        })
+        .select('*')
         .eq('id', taskId)
         .eq('user_id', userId)
+        .single()
+
+      if (fetchError || !originalTask) {
+        console.error('Error fetching original task:', fetchError)
+        return null
+      }
+
+      // Создаём копию в "Сегодня" со ссылкой на оригинал
+      const { data, error } = await supabase
+        .from('tasks')
+        .insert([{
+          title: originalTask.title,
+          category: 'today',
+          date: date,
+          completed: false,
+          order_index: Date.now(),
+          source_task_id: taskId,  // Ссылка на оригинал
+          user_id: userId
+        }])
         .select()
         .single()
 
       if (error) {
-        console.error('Error moving task to today:', error)
+        console.error('Error copying task to today:', error)
         return null
       }
 
       return data
     } catch (error) {
-      console.error('Error in moveTaskToToday:', error)
+      console.error('Error in copyTaskToToday:', error)
       return null
+    }
+  }
+
+  // Синхронизация статуса: при выполнении копии — выполняем и оригинал
+  async syncTaskCompletion(taskId: string, completed: boolean): Promise<boolean> {
+    const userId = this.getCurrentUserId()
+    if (!userId) return false
+
+    try {
+      // Получаем задачу, чтобы узнать source_task_id
+      const { data: task, error: fetchError } = await supabase
+        .from('tasks')
+        .select('source_task_id')
+        .eq('id', taskId)
+        .eq('user_id', userId)
+        .single()
+
+      if (fetchError || !task?.source_task_id) {
+        return false  // Нет оригинала — ничего не делаем
+      }
+
+      // Обновляем статус оригинальной задачи
+      const { error } = await supabase
+        .from('tasks')
+        .update({ completed })
+        .eq('id', task.source_task_id)
+        .eq('user_id', userId)
+
+      if (error) {
+        console.error('Error syncing task completion:', error)
+        return false
+      }
+
+      return true
+    } catch (error) {
+      console.error('Error in syncTaskCompletion:', error)
+      return false
     }
   }
 }

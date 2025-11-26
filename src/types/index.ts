@@ -6,6 +6,7 @@ export interface Task {
   completed: boolean
   date?: string
   order_index: number
+  source_task_id?: string | null  // ID оригинальной задачи из ЗАДАЧИ (для копий в СЕГОДНЯ)
   created_at: string
   updated_at: string
 }

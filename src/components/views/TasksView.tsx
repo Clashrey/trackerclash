@@ -7,7 +7,7 @@ import { DatePickerModal } from '@/components/ui/DatePickerModal'
 
 export const TasksView: React.FC = () => {
   const { tasks, subtasks } = useAppStore()
-  const { updateTask, deleteTask, moveTaskToToday, addSubtask, updateSubtask, deleteSubtask } = useDatabase()
+  const { updateTask, deleteTask, copyTaskToToday, addSubtask, updateSubtask, deleteSubtask } = useDatabase()
 
   const [datePickerTaskId, setDatePickerTaskId] = useState<string | null>(null)
 
@@ -57,13 +57,13 @@ export const TasksView: React.FC = () => {
     setDatePickerTaskId(taskId)
   }, [])
 
-  // Перенести задачу в "Сегодня" на выбранную дату
+  // Скопировать задачу в "Сегодня" на выбранную дату
   const handleDateSelect = useCallback(async (date: string) => {
     if (datePickerTaskId) {
-      await moveTaskToToday(datePickerTaskId, date)
+      await copyTaskToToday(datePickerTaskId, date)
       setDatePickerTaskId(null)
     }
-  }, [datePickerTaskId, moveTaskToToday])
+  }, [datePickerTaskId, copyTaskToToday])
 
   // Subtask handlers
   const handleAddSubtask = useCallback(async (taskId: string, title: string) => {

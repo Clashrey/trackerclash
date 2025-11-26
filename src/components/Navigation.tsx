@@ -4,10 +4,13 @@ import { useAppStore } from '../store'
 
 export function Navigation() {
   const { user, signOut } = useAuth()
-  const { currentCategory, setCurrentCategory, tasks, recurringTasks } = useAppStore()
+  const { currentCategory, setCurrentCategory, tasks, recurringTasks, selectedDate } = useAppStore()
+
+  // Для "Сегодня" считаем только задачи на выбранную дату
+  const todayTasksCount = tasks.filter(t => t.category === 'today' && t.date === selectedDate).length
 
   const categories = [
-    { id: 'today', label: 'Сегодня', count: tasks.filter(t => t.category === 'today').length },
+    { id: 'today', label: 'Сегодня', count: todayTasksCount },
     { id: 'tasks', label: 'Задачи', count: tasks.filter(t => t.category === 'tasks').length },
     { id: 'ideas', label: 'Идеи', count: tasks.filter(t => t.category === 'ideas').length },
     { id: 'recurring', label: 'Регулярные', count: recurringTasks.length },

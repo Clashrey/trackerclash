@@ -70,26 +70,37 @@ class DatabaseService {
 
   async addTask(task: Omit<Task, 'id' | 'user_id' | 'created_at' | 'updated_at'>): Promise<Task | null> {
     const userId = this.getCurrentUserId()
-    if (!userId) return null
+    console.log('🔍 addTask - userId:', userId)
+    console.log('🔍 addTask - task:', task)
+    if (!userId) {
+      console.error('❌ addTask - no userId')
+      return null
+    }
 
     try {
+      const insertData = {
+        ...task,
+        user_id: userId
+      }
+      console.log('🔍 addTask - inserting:', insertData)
+
       const { data, error } = await supabase
         .from('tasks')
-        .insert([{
-          ...task,
-          user_id: userId
-        }])
+        .insert([insertData])
         .select()
         .single()
 
+      console.log('🔍 addTask - result:', { data, error })
+
       if (error) {
-        console.error('Error adding task:', error)
+        console.error('❌ Error adding task:', error)
         return null
       }
 
+      console.log('✅ Task added:', data)
       return data
     } catch (error) {
-      console.error('Error in addTask:', error)
+      console.error('❌ Exception in addTask:', error)
       return null
     }
   }

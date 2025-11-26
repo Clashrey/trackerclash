@@ -6,16 +6,20 @@ export function useDatabase() {
   const {
     setTasks,
     setRecurringTasks,
-    setTaskCompletions
+    setTaskCompletions,
+    userId
   } = useAppStore()
 
   // ✅ Получаем актуальные данные напрямую из store, чтобы избежать stale closures
   const getState = () => useAppStore.getState()
 
-  // Загрузка данных при инициализации
+  // Загрузка данных когда userId появляется
   useEffect(() => {
-    loadAllData()
-  }, [])
+    if (userId) {
+      console.log('🔍 useDatabase - userId available, loading data:', userId)
+      loadAllData()
+    }
+  }, [userId])
 
   const loadAllData = async () => {
     try {

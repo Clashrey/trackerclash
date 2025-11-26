@@ -47,7 +47,11 @@ class DatabaseService {
   // Tasks
   async getTasks(): Promise<Task[]> {
     const userId = this.getCurrentUserId()
-    if (!userId) return []
+    console.log('🔍 getTasks - userId:', userId)
+    if (!userId) {
+      console.log('❌ getTasks - no userId, returning empty')
+      return []
+    }
 
     try {
       const { data, error } = await supabase
@@ -56,14 +60,17 @@ class DatabaseService {
         .eq('user_id', userId)
         .order('order_index')
 
+      console.log('🔍 getTasks - result:', { count: data?.length, error })
+
       if (error) {
-        console.error('Error fetching tasks:', error)
+        console.error('❌ Error fetching tasks:', error)
         return []
       }
 
+      console.log('✅ getTasks - loaded', data?.length, 'tasks')
       return data || []
     } catch (error) {
-      console.error('Error in getTasks:', error)
+      console.error('❌ Exception in getTasks:', error)
       return []
     }
   }

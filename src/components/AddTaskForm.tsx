@@ -24,8 +24,12 @@ export const AddTaskForm: React.FC<AddTaskFormProps> = ({
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
+    console.log('🔍 handleSubmit - title:', title, 'userId:', userId)
 
-    if (!title.trim() || !userId) return
+    if (!title.trim() || !userId) {
+      console.log('❌ handleSubmit blocked - title:', title.trim(), 'userId:', userId)
+      return
+    }
 
     const taskDate = date ? date.toISOString().split('T')[0] : (category === 'today' ? selectedDate : undefined)
 
@@ -41,7 +45,8 @@ export const AddTaskForm: React.FC<AddTaskFormProps> = ({
       ? Math.max(...categoryTasks.map(t => t.order_index))
       : -1
 
-    await addTask({
+    console.log('🔍 Calling addTask...')
+    const result = await addTask({
       user_id: userId,
       title: title.trim(),
       category: category === 'today' ? 'today' : category,
@@ -49,6 +54,7 @@ export const AddTaskForm: React.FC<AddTaskFormProps> = ({
       date: taskDate,
       order_index: maxOrderIndex + 1,
     })
+    console.log('🔍 addTask result:', result)
 
     setTitle('')
     setIsExpanded(false)

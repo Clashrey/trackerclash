@@ -13,13 +13,7 @@ export function useDatabase() {
   // ✅ Получаем актуальные данные напрямую из store, чтобы избежать stale closures
   const getState = () => useAppStore.getState()
 
-  // Загрузка данных когда userId появляется
-  useEffect(() => {
-    if (userId) {
-      console.log('🔍 useDatabase - userId available, loading data:', userId)
-      loadAllData()
-    }
-  }, [userId])
+  // Загрузка данных перенесена в App.tsx чтобы избежать повторных загрузок
 
   const loadAllData = async () => {
     try {

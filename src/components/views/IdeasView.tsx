@@ -72,6 +72,15 @@ export const IdeasView: React.FC = () => {
     await deleteSubtask(subtaskId)
   }, [deleteSubtask])
 
+  // Edit handlers
+  const handleUpdateTask = useCallback(async (taskId: string, title: string) => {
+    await updateTask(taskId, { title })
+  }, [updateTask])
+
+  const handleUpdateSubtaskTitle = useCallback(async (subtaskId: string, title: string) => {
+    await updateSubtask(subtaskId, { title })
+  }, [updateSubtask])
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
@@ -97,11 +106,13 @@ export const IdeasView: React.FC = () => {
                 subtasks={subtasks}
                 onToggle={handleToggleTask}
                 onDelete={handleDeleteTask}
+                onUpdate={handleUpdateTask}
                 onMoveUp={handleMoveTaskUp}
                 onMoveDown={handleMoveTaskDown}
                 onAddSubtask={handleAddSubtask}
                 onToggleSubtask={handleToggleSubtask}
                 onDeleteSubtask={handleDeleteSubtask}
+                onUpdateSubtask={handleUpdateSubtaskTitle}
                 showMoveButtons={ideasList.length > 1}
                 isFirst={index === 0}
                 isLast={index === ideasList.length - 1}

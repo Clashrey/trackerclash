@@ -1,5 +1,5 @@
-import React, { useState } from 'react'
-import { Check, X, ChevronUp, ChevronDown, ChevronRight, Plus, Calendar } from 'lucide-react'
+import React, { useState, useRef, useEffect } from 'react'
+import { Check, X, ChevronUp, ChevronDown, ChevronRight, Plus, Calendar, Pencil } from 'lucide-react'
 import { Task, RecurringTask, Subtask } from '../lib/database'
 
 interface TaskItemProps {
@@ -7,12 +7,14 @@ interface TaskItemProps {
   subtasks?: Subtask[]
   onToggle: (id: string) => void
   onDelete: (id: string) => void
+  onUpdate?: (id: string, title: string) => void
   onMoveUp?: (id: string) => void
   onMoveDown?: (id: string) => void
   onMoveToToday?: (id: string) => void
   onAddSubtask?: (taskId: string, title: string) => void
   onToggleSubtask?: (subtaskId: string, completed: boolean) => void
   onDeleteSubtask?: (subtaskId: string) => void
+  onUpdateSubtask?: (subtaskId: string, title: string) => void
   showMoveButtons?: boolean
   showMoveToToday?: boolean
   isFirst?: boolean
@@ -24,12 +26,14 @@ export function TaskItem({
   subtasks = [],
   onToggle,
   onDelete,
+  onUpdate,
   onMoveUp,
   onMoveDown,
   onMoveToToday,
   onAddSubtask,
   onToggleSubtask,
   onDeleteSubtask,
+  onUpdateSubtask,
   showMoveButtons = false,
   showMoveToToday = false,
   isFirst = false,
@@ -39,6 +43,26 @@ export function TaskItem({
   const [isExpanded, setIsExpanded] = useState(false)
   const [newSubtaskTitle, setNewSubtaskTitle] = useState('')
   const [isAddingSubtask, setIsAddingSubtask] = useState(false)
+  const [isEditing, setIsEditing] = useState(false)
+  const [editTitle, setEditTitle] = useState(task.title)
+  const [editingSubtaskId, setEditingSubtaskId] = useState<string | null>(null)
+  const [editSubtaskTitle, setEditSubtaskTitle] = useState('')
+  const editInputRef = useRef<HTMLInputElement>(null)
+  const subtaskEditInputRef = useRef<HTMLInputElement>(null)
+
+  useEffect(() => {
+    if (isEditing && editInputRef.current) {
+      editInputRef.current.focus()
+      editInputRef.current.select()
+    }
+  }, [isEditing])
+
+  useEffect(() => {
+    if (editingSubtaskId && subtaskEditInputRef.current) {
+      subtaskEditInputRef.current.focus()
+      subtaskEditInputRef.current.select()
+    }
+  }, [editingSubtaskId])
 
   const isRecurring = 'isRecurring' in task && task.isRecurring
   const isCompleted = task.completed || false
@@ -62,6 +86,54 @@ export function TaskItem({
     await onAddSubtask(task.id, newSubtaskTitle.trim())
     setNewSubtaskTitle('')
     setIsAddingSubtask(false)
+  }
+
+  const handleEditSubmit = async () => {
+    if (!editTitle.trim() || editTitle === task.title) {
+      setIsEditing(false)
+      setEditTitle(task.title)
+      return
+    }
+    if (onUpdate) {
+      await onUpdate(task.id, editTitle.trim())
+    }
+    setIsEditing(false)
+  }
+
+  const handleEditKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter') {
+      handleEditSubmit()
+    } else if (e.key === 'Escape') {
+      setIsEditing(false)
+      setEditTitle(task.title)
+    }
+  }
+
+  const handleSubtaskEditSubmit = async (subtaskId: string, originalTitle: string) => {
+    if (!editSubtaskTitle.trim() || editSubtaskTitle === originalTitle) {
+      setEditingSubtaskId(null)
+      setEditSubtaskTitle('')
+      return
+    }
+    if (onUpdateSubtask) {
+      await onUpdateSubtask(subtaskId, editSubtaskTitle.trim())
+    }
+    setEditingSubtaskId(null)
+    setEditSubtaskTitle('')
+  }
+
+  const handleSubtaskEditKeyDown = (e: React.KeyboardEvent, subtaskId: string, originalTitle: string) => {
+    if (e.key === 'Enter') {
+      handleSubtaskEditSubmit(subtaskId, originalTitle)
+    } else if (e.key === 'Escape') {
+      setEditingSubtaskId(null)
+      setEditSubtaskTitle('')
+    }
+  }
+
+  const startEditingSubtask = (subtask: Subtask) => {
+    setEditingSubtaskId(subtask.id)
+    setEditSubtaskTitle(subtask.title)
   }
 
   return (
@@ -111,15 +183,34 @@ export function TaskItem({
         {/* Task Content */}
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-3">
-            <span
-              className={`text-base font-medium transition-all ${
-                isCompleted
-                  ? 'text-gray-400 line-through decoration-2 decoration-gray-400'
-                  : 'text-gray-900'
-              }`}
-            >
-              {task.title}
-            </span>
+            {isEditing ? (
+              <input
+                ref={editInputRef}
+                type="text"
+                value={editTitle}
+                onChange={e => setEditTitle(e.target.value)}
+                onBlur={handleEditSubmit}
+                onKeyDown={handleEditKeyDown}
+                className="flex-1 px-2 py-1 text-base font-medium border border-blue-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+              />
+            ) : (
+              <span
+                onClick={() => {
+                  if (!isRecurring && onUpdate) {
+                    setIsEditing(true)
+                    setEditTitle(task.title)
+                  }
+                }}
+                className={`text-base font-medium transition-all cursor-pointer hover:text-blue-600 ${
+                  isCompleted
+                    ? 'text-gray-400 line-through decoration-2 decoration-gray-400'
+                    : 'text-gray-900'
+                }`}
+                title={!isRecurring ? 'Нажмите для редактирования' : undefined}
+              >
+                {task.title}
+              </span>
+            )}
             {isRecurring && (
               <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold bg-blue-100 text-blue-700 border border-blue-200">
                 🔄 регулярная
@@ -192,13 +283,27 @@ export function TaskItem({
                   >
                     {subtask.completed && <Check size={12} />}
                   </button>
-                  <span
-                    className={`flex-1 text-sm ${
-                      subtask.completed ? 'text-gray-400 line-through' : 'text-gray-700'
-                    }`}
-                  >
-                    {subtask.title}
-                  </span>
+                  {editingSubtaskId === subtask.id ? (
+                    <input
+                      ref={subtaskEditInputRef}
+                      type="text"
+                      value={editSubtaskTitle}
+                      onChange={e => setEditSubtaskTitle(e.target.value)}
+                      onBlur={() => handleSubtaskEditSubmit(subtask.id, subtask.title)}
+                      onKeyDown={e => handleSubtaskEditKeyDown(e, subtask.id, subtask.title)}
+                      className="flex-1 px-2 py-1 text-sm border border-blue-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    />
+                  ) : (
+                    <span
+                      onClick={() => onUpdateSubtask && startEditingSubtask(subtask)}
+                      className={`flex-1 text-sm cursor-pointer hover:text-blue-600 ${
+                        subtask.completed ? 'text-gray-400 line-through' : 'text-gray-700'
+                      }`}
+                      title="Нажмите для редактирования"
+                    >
+                      {subtask.title}
+                    </span>
+                  )}
                   <button
                     onClick={() => onDeleteSubtask?.(subtask.id)}
                     className="p-1 rounded hover:bg-red-100 text-gray-400 hover:text-red-600 transition-colors"

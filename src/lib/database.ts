@@ -618,6 +618,35 @@ class DatabaseService {
     }
   }
 
+  // Перенос задачи из СЕГОДНЯ на другую дату (вместе с подзадачами)
+  async rescheduleTask(taskId: string, newDate: string): Promise<Task | null> {
+    const userId = this.getCurrentUserId()
+    if (!userId) return null
+
+    try {
+      // Обновляем дату задачи
+      const { data, error } = await supabase
+        .from('tasks')
+        .update({ date: newDate })
+        .eq('id', taskId)
+        .eq('user_id', userId)
+        .eq('category', 'today')
+        .select()
+        .single()
+
+      if (error) {
+        console.error('Error rescheduling task:', error)
+        return null
+      }
+
+      // Подзадачи автоматически остаются привязанными к task_id, переносить их не нужно
+      return data
+    } catch (error) {
+      console.error('Error in rescheduleTask:', error)
+      return null
+    }
+  }
+
   // Синхронизация статуса: при выполнении копии — выполняем и оригинал
   async syncTaskCompletion(taskId: string, completed: boolean): Promise<boolean> {
     const userId = this.getCurrentUserId()

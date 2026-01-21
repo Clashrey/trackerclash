@@ -1,14 +1,17 @@
-import React, { useCallback } from 'react'
+import React, { useCallback, useState } from 'react'
 import { useAppStore } from '../../store'
 import { useDatabase } from '../../hooks/useDatabase'
 import { AddTaskForm } from '../AddTaskForm'
 import { TaskItem } from '../TaskItem'
 import { ProgressBar } from '../ProgressBar'
 import { DateNavigation } from '../DateNavigation'
+import { DatePickerModal } from '../ui/DatePickerModal'
 
 export function TodayView() {
   const { tasks, recurringTasks, selectedDate, taskCompletions, subtasks } = useAppStore()
-  const { updateTask, deleteTask, addTaskCompletion, removeTaskCompletion, addSubtask, updateSubtask, deleteSubtask, syncTaskCompletion } = useDatabase()
+  const { updateTask, deleteTask, addTaskCompletion, removeTaskCompletion, addSubtask, updateSubtask, deleteSubtask, syncTaskCompletion, rescheduleTask } = useDatabase()
+
+  const [rescheduleTaskId, setRescheduleTaskId] = useState<string | null>(null)
 
   // Получаем обычные задачи на сегодня (отсортированные)
   const todayTasks = tasks
@@ -139,6 +142,18 @@ export function TodayView() {
     await updateSubtask(subtaskId, { title })
   }, [updateSubtask])
 
+  // Reschedule handlers
+  const handleRescheduleClick = useCallback((taskId: string) => {
+    setRescheduleTaskId(taskId)
+  }, [])
+
+  const handleRescheduleDateSelect = useCallback(async (date: string) => {
+    if (rescheduleTaskId) {
+      await rescheduleTask(rescheduleTaskId, date)
+      setRescheduleTaskId(null)
+    }
+  }, [rescheduleTaskId, rescheduleTask])
+
   return (
     <div className="space-y-6">
       <DateNavigation />
@@ -211,11 +226,13 @@ export function TodayView() {
                   onUpdate={handleUpdateTask}
                   onMoveUp={handleMoveTaskUp}
                   onMoveDown={handleMoveTaskDown}
+                  onMoveToToday={handleRescheduleClick}
                   onAddSubtask={handleAddSubtask}
                   onToggleSubtask={handleToggleSubtask}
                   onDeleteSubtask={handleDeleteSubtask}
                   onUpdateSubtask={handleUpdateSubtaskTitle}
                   showMoveButtons={todayTasks.length > 1}
+                  showMoveToToday={true}
                   isFirst={index === 0}
                   isLast={index === todayTasks.length - 1}
                 />
@@ -235,6 +252,14 @@ export function TodayView() {
       </div>
 
       <AddTaskForm category="today" placeholder="Добавить задачу на сегодня..." />
+
+      {/* Reschedule Date Picker Modal */}
+      <DatePickerModal
+        isOpen={rescheduleTaskId !== null}
+        onClose={() => setRescheduleTaskId(null)}
+        onSelect={handleRescheduleDateSelect}
+        title="Перенести на другой день"
+      />
     </div>
   )
 }

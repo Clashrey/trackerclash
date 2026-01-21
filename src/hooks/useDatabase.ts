@@ -212,6 +212,16 @@ export function useDatabase() {
     return success
   }, [setTasks])
 
+  // Перенос задачи из СЕГОДНЯ на другую дату
+  const rescheduleTask = useCallback(async (taskId: string, newDate: string) => {
+    const rescheduledTask = await databaseService.rescheduleTask(taskId, newDate)
+    if (rescheduledTask) {
+      const currentTasks = getState().tasks
+      setTasks(currentTasks.map(t => t.id === taskId ? rescheduledTask : t))
+    }
+    return rescheduledTask
+  }, [setTasks])
+
   return {
     // Data loading
     loadAllData,
@@ -238,6 +248,9 @@ export function useDatabase() {
 
     // Copy task to today
     copyTaskToToday,
-    syncTaskCompletion
+    syncTaskCompletion,
+
+    // Reschedule task
+    rescheduleTask
   }
 }

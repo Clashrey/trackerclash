@@ -110,21 +110,21 @@ export function AuthForm() {
   // Экран с сгенерированным ключом
   if (mode === 'generated') {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
+      <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-gray-900 py-12 px-4 sm:px-6 lg:px-8">
         <div className="max-w-md w-full space-y-8">
           <div className="text-center">
-            <Key className="h-16 w-16 text-blue-600 mx-auto mb-4" />
-            <h2 className="text-3xl font-extrabold text-gray-900">
+            <Key className="h-16 w-16 text-blue-600 dark:text-blue-400 mx-auto mb-4" />
+            <h2 className="text-3xl font-extrabold text-gray-900 dark:text-white">
               Ваш ключ готов!
             </h2>
-            <p className="mt-2 text-gray-600">
+            <p className="mt-2 text-gray-600 dark:text-gray-400">
               Сохраните этот ключ для входа в приложение
             </p>
           </div>
 
           <div className="space-y-4">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                 API-ключ:
               </label>
               <div className="relative">
@@ -132,30 +132,30 @@ export function AuthForm() {
                   type={showKey ? 'text' : 'password'}
                   value={generatedKey}
                   readOnly
-                  className="w-full px-3 py-3 border border-gray-300 rounded-md bg-gray-50 font-mono text-sm focus:outline-none"
+                  className="w-full px-3 py-3 border border-gray-300 dark:border-gray-600 rounded-md bg-gray-50 dark:bg-gray-800 text-gray-900 dark:text-white font-mono text-sm focus:outline-none"
                 />
                 <div className="absolute right-2 top-1/2 transform -translate-y-1/2 flex space-x-1">
                   <button
                     onClick={() => setShowKey(!showKey)}
-                    className="p-1 text-gray-500 hover:text-gray-700 transition-colors"
+                    className="p-1 text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 transition-colors"
                   >
                     {showKey ? <EyeOff size={16} /> : <Eye size={16} />}
                   </button>
                   <button
                     onClick={() => copyToClipboard(generatedKey)}
-                    className="p-1 text-gray-500 hover:text-gray-700 transition-colors"
+                    className="p-1 text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 transition-colors"
                   >
                     <Copy size={16} />
                   </button>
                 </div>
               </div>
               {copied && (
-                <p className="text-green-600 text-sm mt-1">✅ Скопировано!</p>
+                <p className="text-green-600 dark:text-green-400 text-sm mt-1">✅ Скопировано!</p>
               )}
             </div>
 
-            <div className="bg-yellow-50 border border-yellow-200 rounded-md p-4">
-              <p className="text-yellow-800 text-sm">
+            <div className="bg-yellow-50 dark:bg-yellow-900/30 border border-yellow-200 dark:border-yellow-700 rounded-md p-4">
+              <p className="text-yellow-800 dark:text-yellow-300 text-sm">
                 <strong>Важно:</strong> Сохраните этот ключ! Он потребуется для входа.
               </p>
             </div>
@@ -173,7 +173,7 @@ export function AuthForm() {
                 setGeneratedKey('')
                 setApiKey('')
               }}
-              className="w-full flex justify-center py-2 px-4 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors"
+              className="w-full flex justify-center py-2 px-4 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm text-sm font-medium text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors"
             >
               У меня есть другой ключ
             </button>
@@ -185,31 +185,31 @@ export function AuthForm() {
 
   // Основная форма
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
+    <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-gray-900 py-12 px-4 sm:px-6 lg:px-8">
       <div className="max-w-md w-full space-y-8">
         <div className="text-center">
-          <Key className="h-16 w-16 text-blue-600 mx-auto mb-4" />
-          <h2 className="text-3xl font-extrabold text-gray-900">
+          <Key className="h-16 w-16 text-blue-600 dark:text-blue-400 mx-auto mb-4" />
+          <h2 className="text-3xl font-extrabold text-gray-900 dark:text-white">
             📋 Трекер задач
           </h2>
-          <h3 className="mt-2 text-xl text-gray-600">
-            {mode === 'login' 
-              ? 'Войдите с помощью API-ключа' 
+          <h3 className="mt-2 text-xl text-gray-600 dark:text-gray-400">
+            {mode === 'login'
+              ? 'Войдите с помощью API-ключа'
               : 'Получите новый ключ'
             }
           </h3>
         </div>
 
         {error && (
-          <div className="bg-red-50 border border-red-200 rounded-md p-3">
-            <p className="text-red-800 text-sm">{error}</p>
+          <div className="bg-red-50 dark:bg-red-900/30 border border-red-200 dark:border-red-700 rounded-md p-3">
+            <p className="text-red-800 dark:text-red-300 text-sm">{error}</p>
           </div>
         )}
 
         {mode === 'login' ? (
           <div className="space-y-6">
             <div>
-              <label htmlFor="apikey" className="block text-sm font-medium text-gray-700 mb-2">
+              <label htmlFor="apikey" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                 Введите ваш API-ключ
               </label>
               <div className="relative">
@@ -219,13 +219,13 @@ export function AuthForm() {
                   value={apiKey}
                   onChange={(e) => setApiKey(e.target.value)}
                   placeholder="tk_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
-                  className="w-full px-3 py-3 pl-10 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 font-mono text-sm"
+                  className="w-full px-3 py-3 pl-10 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-800 text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 font-mono text-sm"
                   disabled={loading}
                 />
                 <Key className="h-5 w-5 text-gray-400 absolute left-3 top-1/2 transform -translate-y-1/2" />
               </div>
-              <p className="text-xs text-gray-500 mt-1">
-                API-ключ начинается с <code className="bg-gray-100 px-1 rounded">tk_</code>
+              <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                API-ключ начинается с <code className="bg-gray-100 dark:bg-gray-700 px-1 rounded">tk_</code>
               </p>
             </div>
 
@@ -246,7 +246,7 @@ export function AuthForm() {
               <button
                 type="button"
                 onClick={() => setMode('register')}
-                className="text-blue-600 hover:text-blue-500 text-sm font-medium"
+                className="text-blue-600 dark:text-blue-400 hover:text-blue-500 dark:hover:text-blue-300 text-sm font-medium"
               >
                 Нет ключа? Получить новый
               </button>
@@ -254,8 +254,8 @@ export function AuthForm() {
           </div>
         ) : (
           <div className="space-y-6">
-            <div className="bg-blue-50 border border-blue-200 rounded-md p-4">
-              <p className="text-blue-800 text-sm">
+            <div className="bg-blue-50 dark:bg-blue-900/30 border border-blue-200 dark:border-blue-700 rounded-md p-4">
+              <p className="text-blue-800 dark:text-blue-300 text-sm">
                 Нажмите кнопку ниже, чтобы получить уникальный API-ключ для доступа к вашим задачам.
               </p>
             </div>
@@ -277,15 +277,15 @@ export function AuthForm() {
               <button
                 type="button"
                 onClick={() => setMode('login')}
-                className="text-blue-600 hover:text-blue-500 text-sm font-medium"
+                className="text-blue-600 dark:text-blue-400 hover:text-blue-500 dark:hover:text-blue-300 text-sm font-medium"
               >
                 Уже есть ключ? Войти
               </button>
             </div>
           </div>
         )}
-        
-        <div className="text-center text-xs text-gray-500 mt-4">
+
+        <div className="text-center text-xs text-gray-500 dark:text-gray-400 mt-4">
           Ваши данные надежно сохраняются в облаке
         </div>
       </div>

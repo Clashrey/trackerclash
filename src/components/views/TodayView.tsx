@@ -165,7 +165,7 @@ export function TodayView() {
       />
 
       <div className="space-y-6">
-        <h2 className="text-xl font-bold text-gray-900">
+        <h2 className="text-xl font-bold text-gray-900 dark:text-white">
           Задачи на {new Date(selectedDate).toLocaleDateString('ru-RU', {
             day: 'numeric',
             month: 'long'
@@ -176,8 +176,8 @@ export function TodayView() {
         {todayRecurringTasks.length > 0 && (
           <div className="space-y-4">
             <div className="flex items-center gap-2">
-              <h3 className="text-lg font-semibold text-gray-800">🔄 Регулярные задачи</h3>
-              <span className="text-sm text-gray-500 bg-blue-50 px-2 py-1 rounded-full">
+              <h3 className="text-lg font-semibold text-gray-800 dark:text-gray-200">🔄 Регулярные задачи</h3>
+              <span className="text-sm text-gray-500 dark:text-gray-400 bg-blue-50 dark:bg-blue-900/30 px-2 py-1 rounded-full">
                 {todayRecurringTasks.length}
               </span>
             </div>
@@ -199,9 +199,9 @@ export function TodayView() {
         <div className="space-y-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
-              <h3 className="text-lg font-semibold text-gray-800">📝 Задачи на день</h3>
+              <h3 className="text-lg font-semibold text-gray-800 dark:text-gray-200">📝 Задачи на день</h3>
               {todayTasks.length > 0 && (
-                <span className="text-sm text-gray-500 bg-gray-50 px-2 py-1 rounded-full">
+                <span className="text-sm text-gray-500 dark:text-gray-400 bg-gray-50 dark:bg-gray-700 px-2 py-1 rounded-full">
                   {todayTasks.length}
                 </span>
               )}
@@ -210,7 +210,7 @@ export function TodayView() {
 
           <div className="space-y-3">
             {todayTasks.length === 0 ? (
-              <div className="text-center py-8 text-gray-500 bg-gray-50 rounded-xl border-2 border-dashed border-gray-200">
+              <div className="text-center py-8 text-gray-500 dark:text-gray-400 bg-gray-50 dark:bg-gray-800 rounded-xl border-2 border-dashed border-gray-200 dark:border-gray-700">
                 <div className="text-3xl mb-2">📝</div>
                 <p className="text-base font-medium">Задач на день пока нет</p>
                 <p className="text-sm mt-1">Добавьте задачи, которые нужно выполнить сегодня</p>
@@ -243,7 +243,7 @@ export function TodayView() {
 
         {/* Общая информация */}
         {totalTasks === 0 && (
-          <div className="text-center py-12 text-gray-500">
+          <div className="text-center py-12 text-gray-500 dark:text-gray-400">
             <div className="text-4xl mb-4">✨</div>
             <p className="text-lg font-medium mb-2">День свободен от задач</p>
             <p className="text-sm">Добавьте задачи или наслаждайтесь отдыхом!</p>

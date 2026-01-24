@@ -74,17 +74,17 @@ export function DatePickerModal({ isOpen, onClose, onSelect, title = 'Выбер
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50" onClick={onClose}>
       <div
-        className="bg-white rounded-2xl shadow-xl p-6 w-full max-w-sm mx-4"
+        className="bg-white dark:bg-gray-800 rounded-2xl shadow-xl p-6 w-full max-w-sm mx-4"
         onClick={e => e.stopPropagation()}
       >
         {/* Header */}
         <div className="flex items-center justify-between mb-4">
-          <h3 className="text-lg font-semibold text-gray-900">{title}</h3>
+          <h3 className="text-lg font-semibold text-gray-900 dark:text-white">{title}</h3>
           <button
             onClick={onClose}
-            className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+            className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors"
           >
-            <X size={20} className="text-gray-500" />
+            <X size={20} className="text-gray-500 dark:text-gray-400" />
           </button>
         </div>
 
@@ -92,25 +92,25 @@ export function DatePickerModal({ isOpen, onClose, onSelect, title = 'Выбер
         <div className="flex items-center justify-between mb-4">
           <button
             onClick={handlePrevMonth}
-            className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+            className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors"
           >
-            <ChevronLeft size={20} className="text-gray-600" />
+            <ChevronLeft size={20} className="text-gray-600 dark:text-gray-400" />
           </button>
-          <span className="text-base font-medium text-gray-900">
+          <span className="text-base font-medium text-gray-900 dark:text-white">
             {monthNames[month]} {year}
           </span>
           <button
             onClick={handleNextMonth}
-            className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+            className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors"
           >
-            <ChevronRight size={20} className="text-gray-600" />
+            <ChevronRight size={20} className="text-gray-600 dark:text-gray-400" />
           </button>
         </div>
 
         {/* Day Names */}
         <div className="grid grid-cols-7 gap-1 mb-2">
           {dayNames.map(name => (
-            <div key={name} className="text-center text-xs font-medium text-gray-500 py-2">
+            <div key={name} className="text-center text-xs font-medium text-gray-500 dark:text-gray-400 py-2">
               {name}
             </div>
           ))}
@@ -137,8 +137,8 @@ export function DatePickerModal({ isOpen, onClose, onSelect, title = 'Выбер
                   ${isToday
                     ? 'bg-blue-500 text-white font-semibold'
                     : isPast
-                      ? 'text-gray-300 cursor-not-allowed'
-                      : 'text-gray-700 hover:bg-blue-100 hover:text-blue-700'
+                      ? 'text-gray-300 dark:text-gray-600 cursor-not-allowed'
+                      : 'text-gray-700 dark:text-gray-300 hover:bg-blue-100 dark:hover:bg-blue-900/50 hover:text-blue-700 dark:hover:text-blue-300'
                   }
                 `}
               >
@@ -149,10 +149,10 @@ export function DatePickerModal({ isOpen, onClose, onSelect, title = 'Выбер
         </div>
 
         {/* Quick Actions */}
-        <div className="mt-4 pt-4 border-t border-gray-100 flex gap-2">
+        <div className="mt-4 pt-4 border-t border-gray-100 dark:border-gray-700 flex gap-2">
           <button
             onClick={() => handleSelectDate(today.getDate())}
-            className="flex-1 px-3 py-2 text-sm font-medium bg-blue-50 text-blue-700 rounded-lg hover:bg-blue-100 transition-colors"
+            className="flex-1 px-3 py-2 text-sm font-medium bg-blue-50 dark:bg-blue-900/50 text-blue-700 dark:text-blue-300 rounded-lg hover:bg-blue-100 dark:hover:bg-blue-800/50 transition-colors"
           >
             Сегодня
           </button>
@@ -163,7 +163,7 @@ export function DatePickerModal({ isOpen, onClose, onSelect, title = 'Выбер
               onSelect(formatDateLocal(tomorrow))
               onClose()
             }}
-            className="flex-1 px-3 py-2 text-sm font-medium bg-gray-50 text-gray-700 rounded-lg hover:bg-gray-100 transition-colors"
+            className="flex-1 px-3 py-2 text-sm font-medium bg-gray-50 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-600 transition-colors"
           >
             Завтра
           </button>

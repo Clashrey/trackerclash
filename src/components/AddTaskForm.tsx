@@ -71,7 +71,7 @@ export const AddTaskForm: React.FC<AddTaskFormProps> = ({
     return (
       <button
         onClick={() => setIsExpanded(true)}
-        className={`w-full flex items-center justify-center space-x-2 p-4 rounded-xl border-2 border-dashed border-gray-300 hover:border-blue-500 transition-all duration-200 text-gray-500 hover:text-blue-600 hover:bg-blue-50 ${className}`}
+        className={`w-full flex items-center justify-center space-x-2 p-4 rounded-xl border-2 border-dashed border-gray-300 dark:border-gray-600 hover:border-blue-500 dark:hover:border-blue-400 transition-all duration-200 text-gray-500 dark:text-gray-400 hover:text-blue-600 dark:hover:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/20 ${className}`}
       >
         <Plus className="w-5 h-5" />
         <span className="text-sm sm:text-base font-medium">{placeholder}</span>
@@ -88,7 +88,7 @@ export const AddTaskForm: React.FC<AddTaskFormProps> = ({
           onChange={(e) => setTitle(e.target.value)}
           onKeyDown={handleKeyPress}
           placeholder={placeholder}
-          className="flex-1 px-4 py-3 border border-gray-300 rounded-xl bg-white text-gray-900 placeholder:text-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200"
+          className="flex-1 px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-xl bg-white dark:bg-gray-800 text-gray-900 dark:text-white placeholder:text-gray-500 dark:placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200"
           autoFocus
         />
         <button
@@ -99,14 +99,14 @@ export const AddTaskForm: React.FC<AddTaskFormProps> = ({
           <Plus className="w-5 h-5" />
         </button>
       </div>
-      
+
       <button
         type="button"
         onClick={() => {
           setTitle('')
           setIsExpanded(false)
         }}
-        className="w-full text-sm text-gray-500 hover:text-gray-700 transition-colors"
+        className="w-full text-sm text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 transition-colors"
       >
         Нажмите Escape или кликните здесь для отмены
       </button>

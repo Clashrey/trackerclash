@@ -11,6 +11,11 @@ interface TaskCompletion {
 }
 
 interface AppState {
+  // Theme
+  isDarkMode: boolean
+  setIsDarkMode: (isDark: boolean) => void
+  toggleDarkMode: () => void
+
   // User & Auth
   userId: string | null
   apiKey: string | null
@@ -49,6 +54,22 @@ interface AppState {
 }
 
 export const useAppStore = create<AppState>((set, get) => ({
+  // Theme - загружаем из localStorage или системных настроек
+  isDarkMode: (() => {
+    const stored = localStorage.getItem('darkMode')
+    if (stored !== null) return stored === 'true'
+    return window.matchMedia('(prefers-color-scheme: dark)').matches
+  })(),
+  setIsDarkMode: (isDark) => {
+    localStorage.setItem('darkMode', String(isDark))
+    set({ isDarkMode: isDark })
+  },
+  toggleDarkMode: () => {
+    const newValue = !get().isDarkMode
+    localStorage.setItem('darkMode', String(newValue))
+    set({ isDarkMode: newValue })
+  },
+
   // User & Auth
   userId: null,
   apiKey: null,

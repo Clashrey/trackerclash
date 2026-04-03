@@ -1,6 +1,9 @@
-import { useEffect, useCallback } from 'react'
+import { useCallback } from 'react'
 import { useAppStore } from '../store'
 import { databaseService } from '../lib/database'
+
+// FIX #8: Cleanup запускается не чаще одного раза за браузерную сессию
+const CLEANUP_SESSION_KEY = 'tracker_cleanup_done'
 
 export function useDatabase() {
   const {
@@ -8,24 +11,24 @@ export function useDatabase() {
     setRecurringTasks,
     setTaskCompletions,
     setSubtasks,
-    userId
   } = useAppStore()
 
-  // ✅ Получаем актуальные данные напрямую из store, чтобы избежать stale closures
   const getState = () => useAppStore.getState()
 
-  // Загрузка данных перенесена в App.tsx чтобы избежать повторных загрузок
-
-  const loadAllData = async () => {
+  // FIX #5 + #8: Пробрасываем ошибки + guard для cleanup
+  const loadAllData = useCallback(async (): Promise<void> => {
     try {
-      // Сначала очищаем старые задачи "Сегодня" (старше 30 дней)
-      await databaseService.cleanupOldTodayTasks()
+      // FIX #8: Cleanup — только один раз за сессию
+      if (!sessionStorage.getItem(CLEANUP_SESSION_KEY)) {
+        await databaseService.cleanupOldTodayTasks()
+        sessionStorage.setItem(CLEANUP_SESSION_KEY, '1')
+      }
 
       const [tasksData, recurringTasksData, completionsData, subtasksData] = await Promise.all([
         databaseService.getTasks(),
         databaseService.getRecurringTasks(),
         databaseService.getTaskCompletions(),
-        databaseService.getSubtasks()
+        databaseService.getSubtasks(),
       ])
 
       setTasks(tasksData)
@@ -34,92 +37,115 @@ export function useDatabase() {
       setSubtasks(subtasksData)
     } catch (error) {
       console.error('Error loading data:', error)
+      throw error // FIX #5: пробрасываем в caller
     }
-  }
+  }, [setTasks, setRecurringTasks, setTaskCompletions, setSubtasks])
 
   // Tasks
   const addTask = useCallback(async (task: Parameters<typeof databaseService.addTask>[0]) => {
-    const newTask = await databaseService.addTask(task)
-    if (newTask) {
-      // ✅ Используем getState() для получения актуального состояния
-      const currentTasks = getState().tasks
-      setTasks([...currentTasks, newTask])
+    try {
+      const newTask = await databaseService.addTask(task)
+      if (newTask) {
+        const currentTasks = getState().tasks
+        setTasks([...currentTasks, newTask])
+      }
+      return newTask
+    } catch (error) {
+      console.error('❌ addTask failed:', error)
+      throw error
     }
-    return newTask
   }, [setTasks])
 
   const updateTask = useCallback(async (id: string, updates: Parameters<typeof databaseService.updateTask>[1]) => {
-    const updatedTask = await databaseService.updateTask(id, updates)
-
-    if (updatedTask) {
-      // ✅ Используем getState() для получения актуального состояния
-      const currentTasks = getState().tasks
-      const updatedTasks = currentTasks.map(t =>
-        t.id === id ? { ...updatedTask } : { ...t }
-      )
-      setTasks(updatedTasks)
+    try {
+      const updatedTask = await databaseService.updateTask(id, updates)
+      if (updatedTask) {
+        const currentTasks = getState().tasks
+        setTasks(currentTasks.map(t => t.id === id ? { ...updatedTask } : { ...t }))
+      }
+      return updatedTask
+    } catch (error) {
+      console.error('❌ updateTask failed:', error)
+      throw error
     }
-    return updatedTask
   }, [setTasks])
 
   const deleteTask = useCallback(async (id: string) => {
-    const success = await databaseService.deleteTask(id)
-    if (success) {
-      // ✅ Используем getState() для получения актуального состояния
-      const currentTasks = getState().tasks
-      setTasks(currentTasks.filter(t => t.id !== id))
+    try {
+      const success = await databaseService.deleteTask(id)
+      if (success) {
+        const currentTasks = getState().tasks
+        setTasks(currentTasks.filter(t => t.id !== id))
+      }
+      return success
+    } catch (error) {
+      console.error('❌ deleteTask failed:', error)
+      throw error
     }
-    return success
   }, [setTasks])
 
   // Recurring Tasks
   const addRecurringTask = useCallback(async (task: Parameters<typeof databaseService.addRecurringTask>[0]) => {
-    const newTask = await databaseService.addRecurringTask(task)
-    if (newTask) {
-      const currentRecurringTasks = getState().recurringTasks
-      setRecurringTasks([...currentRecurringTasks, newTask])
+    try {
+      const newTask = await databaseService.addRecurringTask(task)
+      if (newTask) {
+        const currentRecurringTasks = getState().recurringTasks
+        setRecurringTasks([...currentRecurringTasks, newTask])
+      }
+      return newTask
+    } catch (error) {
+      console.error('❌ addRecurringTask failed:', error)
+      throw error
     }
-    return newTask
   }, [setRecurringTasks])
 
   const updateRecurringTask = useCallback(async (id: string, updates: Parameters<typeof databaseService.updateRecurringTask>[1]) => {
-    const updatedTask = await databaseService.updateRecurringTask(id, updates)
-
-    if (updatedTask) {
-      const currentRecurringTasks = getState().recurringTasks
-      const updatedTasks = currentRecurringTasks.map(t =>
-        t.id === id ? { ...updatedTask } : { ...t }
-      )
-      setRecurringTasks(updatedTasks)
+    try {
+      const updatedTask = await databaseService.updateRecurringTask(id, updates)
+      if (updatedTask) {
+        const currentRecurringTasks = getState().recurringTasks
+        setRecurringTasks(currentRecurringTasks.map(t => t.id === id ? { ...updatedTask } : { ...t }))
+      }
+      return updatedTask
+    } catch (error) {
+      console.error('❌ updateRecurringTask failed:', error)
+      throw error
     }
-    return updatedTask
   }, [setRecurringTasks])
 
   const deleteRecurringTask = useCallback(async (id: string) => {
-    const success = await databaseService.deleteRecurringTask(id)
-    if (success) {
-      const currentRecurringTasks = getState().recurringTasks
-      const currentTaskCompletions = getState().taskCompletions
-      setRecurringTasks(currentRecurringTasks.filter(t => t.id !== id))
-      // Также удаляем все связанные выполнения
-      setTaskCompletions(currentTaskCompletions.filter(tc => tc.recurring_task_id !== id))
+    try {
+      const success = await databaseService.deleteRecurringTask(id)
+      if (success) {
+        const currentRecurringTasks = getState().recurringTasks
+        const currentTaskCompletions = getState().taskCompletions
+        setRecurringTasks(currentRecurringTasks.filter(t => t.id !== id))
+        setTaskCompletions(currentTaskCompletions.filter(tc => tc.recurring_task_id !== id))
+      }
+      return success
+    } catch (error) {
+      console.error('❌ deleteRecurringTask failed:', error)
+      throw error
     }
-    return success
   }, [setRecurringTasks, setTaskCompletions])
 
-  // ✅ ИСПРАВЛЕННЫЕ Task Completions
+  // Task Completions
   const addTaskCompletion = useCallback(async (
     taskId: string | null,
     recurringTaskId: string | null,
     date: string
   ) => {
-    const newCompletion = await databaseService.addTaskCompletion(taskId, recurringTaskId, date)
-
-    if (newCompletion) {
-      const currentTaskCompletions = getState().taskCompletions
-      setTaskCompletions([...currentTaskCompletions, { ...newCompletion }])
+    try {
+      const newCompletion = await databaseService.addTaskCompletion(taskId, recurringTaskId, date)
+      if (newCompletion) {
+        const currentTaskCompletions = getState().taskCompletions
+        setTaskCompletions([...currentTaskCompletions, { ...newCompletion }])
+      }
+      return newCompletion
+    } catch (error) {
+      console.error('❌ addTaskCompletion failed:', error)
+      throw error
     }
-    return newCompletion
   }, [setTaskCompletions])
 
   const removeTaskCompletion = useCallback(async (
@@ -127,26 +153,23 @@ export function useDatabase() {
     recurringTaskId: string | null,
     date: string
   ) => {
-    const success = await databaseService.removeTaskCompletion(taskId, recurringTaskId, date)
-
-    if (success) {
-      const currentTaskCompletions = getState().taskCompletions
-      const filteredCompletions = currentTaskCompletions.filter(tc => {
-        // Удаляем completion для конкретной задачи и даты
-        if (taskId && tc.task_id === taskId && tc.date === date) {
-          return false
-        }
-        if (recurringTaskId && tc.recurring_task_id === recurringTaskId && tc.date === date) {
-          return false
-        }
-        return true
-      })
-      setTaskCompletions(filteredCompletions)
+    try {
+      const success = await databaseService.removeTaskCompletion(taskId, recurringTaskId, date)
+      if (success) {
+        const currentTaskCompletions = getState().taskCompletions
+        setTaskCompletions(currentTaskCompletions.filter(tc => {
+          if (taskId && tc.task_id === taskId && tc.date === date) return false
+          if (recurringTaskId && tc.recurring_task_id === recurringTaskId && tc.date === date) return false
+          return true
+        }))
+      }
+      return success
+    } catch (error) {
+      console.error('❌ removeTaskCompletion failed:', error)
+      throw error
     }
-    return success
   }, [setTaskCompletions])
 
-  // ✅ НОВАЯ функция для проверки выполнения
   const isTaskCompleted = async (
     taskId: string | null,
     recurringTaskId: string | null,
@@ -155,102 +178,112 @@ export function useDatabase() {
     return await databaseService.isTaskCompleted(taskId, recurringTaskId, date)
   }
 
-  // ========== SUBTASKS ==========
-
+  // Subtasks
   const addSubtask = useCallback(async (subtask: Parameters<typeof databaseService.addSubtask>[0]) => {
-    const newSubtask = await databaseService.addSubtask(subtask)
-    if (newSubtask) {
-      const currentSubtasks = getState().subtasks
-      setSubtasks([...currentSubtasks, newSubtask])
+    try {
+      const newSubtask = await databaseService.addSubtask(subtask)
+      if (newSubtask) {
+        const currentSubtasks = getState().subtasks
+        setSubtasks([...currentSubtasks, newSubtask])
+      }
+      return newSubtask
+    } catch (error) {
+      console.error('❌ addSubtask failed:', error)
+      throw error
     }
-    return newSubtask
   }, [setSubtasks])
 
   const updateSubtask = useCallback(async (id: string, updates: Parameters<typeof databaseService.updateSubtask>[1]) => {
-    const updatedSubtask = await databaseService.updateSubtask(id, updates)
-    if (updatedSubtask) {
-      const currentSubtasks = getState().subtasks
-      setSubtasks(currentSubtasks.map(s => s.id === id ? updatedSubtask : s))
+    try {
+      const updatedSubtask = await databaseService.updateSubtask(id, updates)
+      if (updatedSubtask) {
+        const currentSubtasks = getState().subtasks
+        setSubtasks(currentSubtasks.map(s => s.id === id ? updatedSubtask : s))
+      }
+      return updatedSubtask
+    } catch (error) {
+      console.error('❌ updateSubtask failed:', error)
+      throw error
     }
-    return updatedSubtask
   }, [setSubtasks])
 
   const deleteSubtask = useCallback(async (id: string) => {
-    const success = await databaseService.deleteSubtask(id)
-    if (success) {
-      const currentSubtasks = getState().subtasks
-      setSubtasks(currentSubtasks.filter(s => s.id !== id))
+    try {
+      const success = await databaseService.deleteSubtask(id)
+      if (success) {
+        const currentSubtasks = getState().subtasks
+        setSubtasks(currentSubtasks.filter(s => s.id !== id))
+      }
+      return success
+    } catch (error) {
+      console.error('❌ deleteSubtask failed:', error)
+      throw error
     }
-    return success
   }, [setSubtasks])
 
-  // ========== COPY TASK TO TODAY ==========
-
   const copyTaskToToday = useCallback(async (taskId: string, date: string) => {
-    const newTask = await databaseService.copyTaskToToday(taskId, date)
-    if (newTask) {
-      const currentTasks = getState().tasks
-      setTasks([...currentTasks, newTask])
-    }
-    return newTask
-  }, [setTasks])
-
-  // Синхронизация статуса копии с оригиналом
-  const syncTaskCompletion = useCallback(async (taskId: string, completed: boolean) => {
-    const success = await databaseService.syncTaskCompletion(taskId, completed)
-    if (success) {
-      // Получаем source_task_id из текущей задачи
-      const currentTasks = getState().tasks
-      const task = currentTasks.find(t => t.id === taskId)
-      if (task?.source_task_id) {
-        // Обновляем статус оригинала в локальном store
-        setTasks(currentTasks.map(t =>
-          t.id === task.source_task_id ? { ...t, completed } : t
-        ))
+    try {
+      const newTask = await databaseService.copyTaskToToday(taskId, date)
+      if (newTask) {
+        const currentTasks = getState().tasks
+        setTasks([...currentTasks, newTask])
       }
+      return newTask
+    } catch (error) {
+      console.error('❌ copyTaskToToday failed:', error)
+      throw error
     }
-    return success
   }, [setTasks])
 
-  // Перенос задачи из СЕГОДНЯ на другую дату
-  const rescheduleTask = useCallback(async (taskId: string, newDate: string) => {
-    const rescheduledTask = await databaseService.rescheduleTask(taskId, newDate)
-    if (rescheduledTask) {
-      const currentTasks = getState().tasks
-      setTasks(currentTasks.map(t => t.id === taskId ? rescheduledTask : t))
+  const syncTaskCompletion = useCallback(async (taskId: string, completed: boolean) => {
+    try {
+      const success = await databaseService.syncTaskCompletion(taskId, completed)
+      if (success) {
+        const currentTasks = getState().tasks
+        const task = currentTasks.find(t => t.id === taskId)
+        if (task?.source_task_id) {
+          setTasks(currentTasks.map(t =>
+            t.id === task.source_task_id ? { ...t, completed } : t
+          ))
+        }
+      }
+      return success
+    } catch (error) {
+      console.error('❌ syncTaskCompletion failed:', error)
+      return false
     }
-    return rescheduledTask
+  }, [setTasks])
+
+  const rescheduleTask = useCallback(async (taskId: string, newDate: string) => {
+    try {
+      const rescheduledTask = await databaseService.rescheduleTask(taskId, newDate)
+      if (rescheduledTask) {
+        const currentTasks = getState().tasks
+        setTasks(currentTasks.map(t => t.id === taskId ? rescheduledTask : t))
+      }
+      return rescheduledTask
+    } catch (error) {
+      console.error('❌ rescheduleTask failed:', error)
+      throw error
+    }
   }, [setTasks])
 
   return {
-    // Data loading
     loadAllData,
-
-    // Tasks
     addTask,
     updateTask,
     deleteTask,
-
-    // Recurring Tasks
     addRecurringTask,
     updateRecurringTask,
     deleteRecurringTask,
-
-    // Task Completions
     addTaskCompletion,
     removeTaskCompletion,
     isTaskCompleted,
-
-    // Subtasks
     addSubtask,
     updateSubtask,
     deleteSubtask,
-
-    // Copy task to today
     copyTaskToToday,
     syncTaskCompletion,
-
-    // Reschedule task
-    rescheduleTask
+    rescheduleTask,
   }
 }

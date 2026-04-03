@@ -24,20 +24,18 @@ export const RecurringView: React.FC = () => {
     days_of_week: [] as number[]
   })
 
-  // Сортируем задачи по order_index
   const sortedTasks = [...recurringTasks].sort((a, b) => {
-    const aOrder = 'order_index' in a ? a.order_index || 0 : 0
-    const bOrder = 'order_index' in b ? b.order_index || 0 : 0
+    // FIX #7: Используем ?? 0 вместо || 0 — корректная обработка order_index = 0
+    const aOrder = 'order_index' in a ? (a.order_index ?? 0) : 0
+    const bOrder = 'order_index' in b ? (b.order_index ?? 0) : 0
     return aOrder - bOrder
   })
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-
     if (!newTask.title.trim() || !userId) return
 
-    // Получаем максимальный order_index и добавляем новую задачу в конец
-    const maxOrder = Math.max(...sortedTasks.map(t => ('order_index' in t ? t.order_index || 0 : 0)), -1)
+    const maxOrder = Math.max(...sortedTasks.map(t => ('order_index' in t ? t.order_index ?? 0 : 0)), -1)
 
     await addRecurringTask({
       user_id: userId,
@@ -47,11 +45,7 @@ export const RecurringView: React.FC = () => {
       order_index: maxOrder + 1,
     })
 
-    setNewTask({
-      title: '',
-      frequency: 'daily',
-      days_of_week: []
-    })
+    setNewTask({ title: '', frequency: 'daily', days_of_week: [] })
     setIsAdding(false)
   }
 
@@ -59,6 +53,7 @@ export const RecurringView: React.FC = () => {
     await deleteRecurringTask(id)
   }
 
+  // FIX #7: Используем ?? 0 вместо || 0 для корректной обработки order_index = 0
   const handleMoveUp = useCallback(async (taskId: string) => {
     const taskIndex = sortedTasks.findIndex(t => t.id === taskId)
     if (taskIndex <= 0) return
@@ -66,13 +61,10 @@ export const RecurringView: React.FC = () => {
     const task = sortedTasks[taskIndex]
     const prevTask = sortedTasks[taskIndex - 1]
 
-    // Меняем order_index местами
     await Promise.all([
-      updateRecurringTask(task.id, { order_index: prevTask.order_index || 0 }),
-      updateRecurringTask(prevTask.id, { order_index: task.order_index || 0 })
+      updateRecurringTask(task.id,     { order_index: prevTask.order_index ?? 0 }),
+      updateRecurringTask(prevTask.id, { order_index: task.order_index     ?? 0 }),
     ])
-
-    console.log(`Moved recurring task ${taskId} up`)
   }, [sortedTasks, updateRecurringTask])
 
   const handleMoveDown = useCallback(async (taskId: string) => {
@@ -82,13 +74,10 @@ export const RecurringView: React.FC = () => {
     const task = sortedTasks[taskIndex]
     const nextTask = sortedTasks[taskIndex + 1]
 
-    // Меняем order_index местами
     await Promise.all([
-      updateRecurringTask(task.id, { order_index: nextTask.order_index || 0 }),
-      updateRecurringTask(nextTask.id, { order_index: task.order_index || 0 })
+      updateRecurringTask(task.id,     { order_index: nextTask.order_index ?? 0 }),
+      updateRecurringTask(nextTask.id, { order_index: task.order_index     ?? 0 }),
     ])
-
-    console.log(`Moved recurring task ${taskId} down`)
   }, [sortedTasks, updateRecurringTask])
 
   const toggleDay = (dayId: number) => {
@@ -101,17 +90,13 @@ export const RecurringView: React.FC = () => {
   }
 
   const getFrequencyText = (task: RecurringTask) => {
-    if (task.frequency === 'daily') {
-      return 'Ежедневно'
-    }
-
+    if (task.frequency === 'daily') return 'Ежедневно'
     if (task.frequency === 'weekly' && task.days_of_week) {
       const selectedDays = task.days_of_week
         .map(dayId => daysOfWeek.find(d => d.id === dayId)?.label)
         .filter(Boolean)
       return selectedDays.join(', ')
     }
-
     return 'Еженедельно'
   }
 
@@ -147,7 +132,6 @@ export const RecurringView: React.FC = () => {
               key={task.id}
               className="flex items-center gap-4 p-4 rounded-xl border bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700 hover:border-blue-300 dark:hover:border-blue-500 hover:shadow-md shadow-sm transition-all"
             >
-              {/* Move Buttons */}
               {sortedTasks.length > 1 && (
                 <div className="flex flex-col gap-1">
                   <button
@@ -222,7 +206,6 @@ export const RecurringView: React.FC = () => {
                 />
                 <span className="text-sm text-gray-700 dark:text-gray-300">Ежедневно</span>
               </label>
-
               <label className="flex items-center space-x-3 cursor-pointer">
                 <input
                   type="radio"

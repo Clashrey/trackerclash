@@ -10,6 +10,14 @@ interface TaskCompletion {
   created_at: string
 }
 
+// FIX #4: Используем локальную дату, а не UTC
+export function formatLocalDate(date: Date): string {
+  const y = date.getFullYear()
+  const m = String(date.getMonth() + 1).padStart(2, '0')
+  const d = String(date.getDate()).padStart(2, '0')
+  return `${y}-${m}-${d}`
+}
+
 interface AppState {
   // Theme
   isDarkMode: boolean
@@ -21,30 +29,30 @@ interface AppState {
   apiKey: string | null
   setUserId: (userId: string | null) => void
   setApiKey: (apiKey: string | null) => void
-  
+
   // Current view
   currentCategory: TaskCategory
   setCurrentCategory: (category: TaskCategory) => void
-  
-  // Current date for "today" view
+
+  // FIX #4: selectedDate теперь использует локальную дату, не UTC
   currentDate: Date
   setCurrentDate: (date: Date) => void
   selectedDate: string
   setSelectedDate: (date: string) => void
-  
-  // ✅ Tasks - ТОЛЬКО setters, без бизнес-логики
+
+  // Tasks
   tasks: Task[]
   setTasks: (tasks: Task[]) => void
-  
-  // ✅ Recurring tasks - ТОЛЬКО setters
+
+  // Recurring tasks
   recurringTasks: RecurringTask[]
   setRecurringTasks: (tasks: RecurringTask[]) => void
-  
-  // ✅ Task completions - ТОЛЬКО setters
+
+  // Task completions
   taskCompletions: TaskCompletion[]
   setTaskCompletions: (completions: TaskCompletion[]) => void
 
-  // ✅ Subtasks
+  // Subtasks
   subtasks: Subtask[]
   setSubtasks: (subtasks: Subtask[]) => void
 
@@ -54,7 +62,7 @@ interface AppState {
 }
 
 export const useAppStore = create<AppState>((set, get) => ({
-  // Theme - загружаем из localStorage или системных настроек
+  // Theme
   isDarkMode: (() => {
     const stored = localStorage.getItem('darkMode')
     if (stored !== null) return stored === 'true'
@@ -75,33 +83,34 @@ export const useAppStore = create<AppState>((set, get) => ({
   apiKey: null,
   setUserId: (userId) => set({ userId }),
   setApiKey: (apiKey) => set({ apiKey }),
-  
+
   // Current view
   currentCategory: 'today',
   setCurrentCategory: (category) => set({ currentCategory: category }),
-  
-  // Current date
+
+  // FIX #4: Локальная дата вместо UTC
   currentDate: new Date(),
   setCurrentDate: (date) => {
-    const dateStr = date.toISOString().split('T')[0]
+    const dateStr = formatLocalDate(date) // локальная дата
     set({ currentDate: date, selectedDate: dateStr })
   },
-  selectedDate: new Date().toISOString().split('T')[0],
+  selectedDate: formatLocalDate(new Date()), // локальная дата
+
   setSelectedDate: (date) => set({ selectedDate: date }),
-  
-  // ✅ Tasks - ТОЛЬКО state management, БЕЗ бизнес-логики
+
+  // Tasks
   tasks: [],
   setTasks: (tasks) => set({ tasks }),
-  
-  // ✅ Recurring tasks - ТОЛЬКО state management
+
+  // Recurring tasks
   recurringTasks: [],
   setRecurringTasks: (tasks) => set({ recurringTasks: tasks }),
-  
-  // ✅ Task completions - ТОЛЬКО state management
+
+  // Task completions
   taskCompletions: [],
   setTaskCompletions: (completions) => set({ taskCompletions: completions }),
 
-  // ✅ Subtasks - ТОЛЬКО state management
+  // Subtasks
   subtasks: [],
   setSubtasks: (subtasks) => set({ subtasks }),
 

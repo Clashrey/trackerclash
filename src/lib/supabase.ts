@@ -1,12 +1,20 @@
 import { createClient } from '@supabase/supabase-js'
 
-// Supabase configuration
-const supabaseUrl = 'https://mszntxpdgnuvthjypkih.supabase.co'
-const supabaseAnonKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im1zem50eHBkZ251dnRoanlwa2loIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDk1NjM4NDIsImV4cCI6MjA2NTEzOTg0Mn0.2zfcQ7qJ3wLlt1e4ONwp5Thd75SYppSoufGEd0wtqnY'
+// Читаем из переменных окружения (установлены в Vercel Dashboard)
+const supabaseUrl = import.meta.env.VITE_SUPABASE_URL
+const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY
+
+if (!supabaseUrl || !supabaseAnonKey) {
+  throw new Error(
+    '[Supabase] Отсутствуют переменные окружения: ' +
+    'VITE_SUPABASE_URL и VITE_SUPABASE_ANON_KEY обязательны. ' +
+    'Добавьте их в Vercel Dashboard → Settings → Environment Variables.'
+  )
+}
 
 export const supabase = createClient(supabaseUrl, supabaseAnonKey)
 
-// Database types (упрощенные)
+// Database types
 export interface Database {
   public: {
     Tables: {
@@ -139,12 +147,14 @@ export interface Database {
   }
 }
 
-// API Key utilities
+// FIX #2: CSPRNG вместо Math.random() для генерации API-ключей
 export const generateApiKey = (): string => {
   const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789'
-  let result = 'tk_' // tracker key prefix
-  for (let i = 0; i < 32; i++) {
-    result += chars.charAt(Math.floor(Math.random() * chars.length))
+  const randomBytes = new Uint8Array(32)
+  crypto.getRandomValues(randomBytes) // Криптографически стойкий ГПСЧ
+  let result = 'tk_'
+  for (const byte of randomBytes) {
+    result += chars[byte % chars.length]
   }
   return result
 }

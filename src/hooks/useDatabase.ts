@@ -1,4 +1,5 @@
 import { useCallback } from 'react'
+import { toast } from 'sonner'
 import { useAppStore } from '../store'
 import { databaseService } from '../lib/database'
 
@@ -48,10 +49,12 @@ export function useDatabase() {
       if (newTask) {
         const currentTasks = getState().tasks
         setTasks([...currentTasks, newTask])
+        toast.success('Задача добавлена')
       }
       return newTask
     } catch (error) {
-      console.error('❌ addTask failed:', error)
+      console.error('addTask failed:', error)
+      toast.error('Не удалось добавить задачу')
       throw error
     }
   }, [setTasks])
@@ -76,10 +79,12 @@ export function useDatabase() {
       if (success) {
         const currentTasks = getState().tasks
         setTasks(currentTasks.filter(t => t.id !== id))
+        toast('Задача удалена')
       }
       return success
     } catch (error) {
-      console.error('❌ deleteTask failed:', error)
+      console.error('deleteTask failed:', error)
+      toast.error('Не удалось удалить задачу')
       throw error
     }
   }, [setTasks])
@@ -91,10 +96,12 @@ export function useDatabase() {
       if (newTask) {
         const currentRecurringTasks = getState().recurringTasks
         setRecurringTasks([...currentRecurringTasks, newTask])
+        toast.success('Регулярная задача создана')
       }
       return newTask
     } catch (error) {
-      console.error('❌ addRecurringTask failed:', error)
+      console.error('addRecurringTask failed:', error)
+      toast.error('Не удалось создать задачу')
       throw error
     }
   }, [setRecurringTasks])
@@ -121,10 +128,12 @@ export function useDatabase() {
         const currentTaskCompletions = getState().taskCompletions
         setRecurringTasks(currentRecurringTasks.filter(t => t.id !== id))
         setTaskCompletions(currentTaskCompletions.filter(tc => tc.recurring_task_id !== id))
+        toast('Регулярная задача удалена')
       }
       return success
     } catch (error) {
-      console.error('❌ deleteRecurringTask failed:', error)
+      console.error('deleteRecurringTask failed:', error)
+      toast.error('Не удалось удалить задачу')
       throw error
     }
   }, [setRecurringTasks, setTaskCompletions])
@@ -227,10 +236,12 @@ export function useDatabase() {
       if (newTask) {
         const currentTasks = getState().tasks
         setTasks([...currentTasks, newTask])
+        toast.success('Задача добавлена в «Сегодня»')
       }
       return newTask
     } catch (error) {
-      console.error('❌ copyTaskToToday failed:', error)
+      console.error('copyTaskToToday failed:', error)
+      toast.error('Не удалось перенести задачу')
       throw error
     }
   }, [setTasks])
@@ -260,10 +271,12 @@ export function useDatabase() {
       if (rescheduledTask) {
         const currentTasks = getState().tasks
         setTasks(currentTasks.map(t => t.id === taskId ? rescheduledTask : t))
+        toast.success(`Задача перенесена на ${newDate}`)
       }
       return rescheduledTask
     } catch (error) {
-      console.error('❌ rescheduleTask failed:', error)
+      console.error('rescheduleTask failed:', error)
+      toast.error('Не удалось перенести задачу')
       throw error
     }
   }, [setTasks])

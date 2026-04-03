@@ -1,4 +1,5 @@
 import React, { useCallback, useState } from 'react'
+import { CalendarCheck } from 'lucide-react'
 import { useAppStore } from '../../store'
 import { useDatabase } from '../../hooks/useDatabase'
 import { AddTaskForm } from '../AddTaskForm'
@@ -6,6 +7,7 @@ import { TaskItem } from '../TaskItem'
 import { ProgressBar } from '../ProgressBar'
 import { DateNavigation } from '../DateNavigation'
 import { DatePickerModal } from '../ui/DatePickerModal'
+import { EmptyState } from '../ui/EmptyState'
 
 export function TodayView() {
   const { tasks, recurringTasks, selectedDate, taskCompletions, subtasks } = useAppStore()
@@ -13,12 +15,10 @@ export function TodayView() {
 
   const [rescheduleTaskId, setRescheduleTaskId] = useState<string | null>(null)
 
-  // Получаем обычные задачи на сегодня (отсортированные)
   const todayTasks = tasks
     .filter(task => task.category === 'today' && task.date === selectedDate)
     .sort((a, b) => a.order_index - b.order_index)
 
-  // Получаем регулярные задачи для сегодня (отсортированные по порядку из вкладки "Регулярные")
   const todayRecurringTasks = recurringTasks
     .filter(recurringTask => {
       if (recurringTask.frequency === 'daily') return true
@@ -29,7 +29,6 @@ export function TodayView() {
       return false
     })
     .sort((a, b) => {
-      // Сортируем по order_index если есть, иначе по дате создания
       const aOrder = 'order_index' in a ? a.order_index : 0
       const bOrder = 'order_index' in b ? b.order_index : 0
       return aOrder - bOrder
@@ -44,23 +43,18 @@ export function TodayView() {
       date: selectedDate,
     }))
 
-  // Подсчет прогресса
   const totalTasks = todayTasks.length + todayRecurringTasks.length
   const completedTasks = todayTasks.filter(t => t.completed).length + todayRecurringTasks.filter(t => t.completed).length
-  const progress = totalTasks > 0 ? (completedTasks / totalTasks) * 100 : 0
 
   const handleToggleTask = useCallback(async (taskId: string) => {
-    // Проверяем, это регулярная задача или обычная
     const regularTask = todayRecurringTasks.find(t => t.id === taskId)
     if (regularTask) {
-      // Регулярная задача
       if (regularTask.completed) {
         await removeTaskCompletion(null, taskId, selectedDate)
       } else {
         await addTaskCompletion(null, taskId, selectedDate)
       }
     } else {
-      // Обычная задача
       const task = todayTasks.find(t => t.id === taskId)
       if (task) {
         const newCompleted = !task.completed
@@ -70,8 +64,6 @@ export function TodayView() {
           await addTaskCompletion(taskId, null, selectedDate)
         }
         await updateTask(taskId, { completed: newCompleted })
-
-        // Если это копия задачи из ЗАДАЧИ — синхронизируем статус оригинала
         if (task.source_task_id) {
           await syncTaskCompletion(taskId, newCompleted)
         }
@@ -83,14 +75,11 @@ export function TodayView() {
     await deleteTask(taskId)
   }, [deleteTask])
 
-  // Функции для перемещения задач
   const handleMoveTaskUp = useCallback(async (taskId: string) => {
     const taskIndex = todayTasks.findIndex(t => t.id === taskId)
     if (taskIndex <= 0) return
-
     const task = todayTasks[taskIndex]
     const prevTask = todayTasks[taskIndex - 1]
-
     await Promise.all([
       updateTask(task.id, { order_index: prevTask.order_index }),
       updateTask(prevTask.id, { order_index: task.order_index })
@@ -100,29 +89,20 @@ export function TodayView() {
   const handleMoveTaskDown = useCallback(async (taskId: string) => {
     const taskIndex = todayTasks.findIndex(t => t.id === taskId)
     if (taskIndex >= todayTasks.length - 1) return
-
     const task = todayTasks[taskIndex]
     const nextTask = todayTasks[taskIndex + 1]
-
     await Promise.all([
       updateTask(task.id, { order_index: nextTask.order_index }),
       updateTask(nextTask.id, { order_index: task.order_index })
     ])
   }, [todayTasks, updateTask])
 
-  // Subtask handlers
   const handleAddSubtask = useCallback(async (taskId: string, title: string) => {
     const currentSubtasks = useAppStore.getState().subtasks.filter(s => s.task_id === taskId)
     const maxOrderIndex = currentSubtasks.length > 0
       ? Math.max(...currentSubtasks.map(s => s.order_index))
       : -1
-
-    await addSubtask({
-      task_id: taskId,
-      title,
-      completed: false,
-      order_index: maxOrderIndex + 1
-    })
+    await addSubtask({ task_id: taskId, title, completed: false, order_index: maxOrderIndex + 1 })
   }, [addSubtask])
 
   const handleToggleSubtask = useCallback(async (subtaskId: string, completed: boolean) => {
@@ -133,7 +113,6 @@ export function TodayView() {
     await deleteSubtask(subtaskId)
   }, [deleteSubtask])
 
-  // Edit handlers
   const handleUpdateTask = useCallback(async (taskId: string, title: string) => {
     await updateTask(taskId, { title })
   }, [updateTask])
@@ -142,7 +121,6 @@ export function TodayView() {
     await updateSubtask(subtaskId, { title })
   }, [updateSubtask])
 
-  // Reschedule handlers
   const handleRescheduleClick = useCallback((taskId: string) => {
     setRescheduleTaskId(taskId)
   }, [])
@@ -158,26 +136,17 @@ export function TodayView() {
     <div className="space-y-6">
       <DateNavigation />
 
-      <ProgressBar
-        completed={completedTasks}
-        total={totalTasks}
-        progress={progress}
-      />
+      {totalTasks > 0 && (
+        <ProgressBar completed={completedTasks} total={totalTasks} label="Прогресс за день" />
+      )}
 
       <div className="space-y-6">
-        <h2 className="text-xl font-bold text-gray-900 dark:text-white">
-          Задачи на {new Date(selectedDate).toLocaleDateString('ru-RU', {
-            day: 'numeric',
-            month: 'long'
-          })}
-        </h2>
-
-        {/* Регулярные задачи (закрепленные сверху) */}
+        {/* Регулярные задачи */}
         {todayRecurringTasks.length > 0 && (
-          <div className="space-y-4">
+          <div className="space-y-3">
             <div className="flex items-center gap-2">
-              <h3 className="text-lg font-semibold text-gray-800 dark:text-gray-200">🔄 Регулярные задачи</h3>
-              <span className="text-sm text-gray-500 dark:text-gray-400 bg-blue-50 dark:bg-blue-900/30 px-2 py-1 rounded-full">
+              <h3 className="text-lg font-semibold text-[var(--color-text-primary)]">Регулярные</h3>
+              <span className="text-xs font-medium px-2 py-0.5 rounded-full bg-[var(--color-accent-light)] text-[var(--color-accent)]">
                 {todayRecurringTasks.length}
               </span>
             </div>
@@ -196,27 +165,29 @@ export function TodayView() {
         )}
 
         {/* Обычные задачи */}
-        <div className="space-y-4">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <h3 className="text-lg font-semibold text-gray-800 dark:text-gray-200">📝 Задачи на день</h3>
-              {todayTasks.length > 0 && (
-                <span className="text-sm text-gray-500 dark:text-gray-400 bg-gray-50 dark:bg-gray-700 px-2 py-1 rounded-full">
-                  {todayTasks.length}
-                </span>
-              )}
-            </div>
+        <div className="space-y-3">
+          <div className="flex items-center gap-2">
+            <h3 className="text-lg font-semibold text-[var(--color-text-primary)]">Задачи на день</h3>
+            {todayTasks.length > 0 && (
+              <span className="text-xs font-medium px-2 py-0.5 rounded-full bg-[var(--color-bg-tertiary)] text-[var(--color-text-secondary)]">
+                {todayTasks.length}
+              </span>
+            )}
           </div>
 
-          <div className="space-y-3">
-            {todayTasks.length === 0 ? (
-              <div className="text-center py-8 text-gray-500 dark:text-gray-400 bg-gray-50 dark:bg-gray-800 rounded-xl border-2 border-dashed border-gray-200 dark:border-gray-700">
-                <div className="text-3xl mb-2">📝</div>
-                <p className="text-base font-medium">Задач на день пока нет</p>
-                <p className="text-sm mt-1">Добавьте задачи, которые нужно выполнить сегодня</p>
-              </div>
-            ) : (
-              todayTasks.map((task, index) => (
+          {todayTasks.length === 0 && todayRecurringTasks.length === 0 ? (
+            <EmptyState
+              icon={<CalendarCheck className="w-12 h-12" />}
+              title="День свободен"
+              description="Добавьте задачи или перенесите из раздела Задачи"
+            />
+          ) : todayTasks.length === 0 ? (
+            <div className="text-center py-6 text-[var(--color-text-tertiary)] text-sm">
+              Обычных задач на этот день нет
+            </div>
+          ) : (
+            <div className="space-y-3">
+              {todayTasks.map((task, index) => (
                 <TaskItem
                   key={task.id}
                   task={task}
@@ -236,24 +207,14 @@ export function TodayView() {
                   isFirst={index === 0}
                   isLast={index === todayTasks.length - 1}
                 />
-              ))
-            )}
-          </div>
+              ))}
+            </div>
+          )}
         </div>
-
-        {/* Общая информация */}
-        {totalTasks === 0 && (
-          <div className="text-center py-12 text-gray-500 dark:text-gray-400">
-            <div className="text-4xl mb-4">✨</div>
-            <p className="text-lg font-medium mb-2">День свободен от задач</p>
-            <p className="text-sm">Добавьте задачи или наслаждайтесь отдыхом!</p>
-          </div>
-        )}
       </div>
 
       <AddTaskForm category="today" placeholder="Добавить задачу на сегодня..." />
 
-      {/* Reschedule Date Picker Modal */}
       <DatePickerModal
         isOpen={rescheduleTaskId !== null}
         onClose={() => setRescheduleTaskId(null)}

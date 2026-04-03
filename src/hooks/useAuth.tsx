@@ -7,6 +7,7 @@ interface User {
   user_id: string
   api_key: string
   name?: string
+  username?: string
   created_at: string
 }
 
@@ -33,42 +34,30 @@ export function AuthProvider({ children }: AuthProviderProps) {
 
   const checkAuth = async () => {
     try {
-      // Проверяем сохраненный API-ключ
       const savedApiKey = localStorage.getItem('tracker_api_key')
-      console.log('🔍 checkAuth - API key from localStorage:', savedApiKey)
-      
+
       if (savedApiKey && validateApiKey(savedApiKey)) {
-        // Проверяем ключ в БД
         const { data: userData, error } = await supabase
           .from('users')
           .select('*')
           .eq('api_key', savedApiKey)
           .single()
 
-        console.log('🔍 User lookup result:', { userData, error })
-
         if (error || !userData) {
-          console.error('❌ API key not found or invalid:', error)
           localStorage.removeItem('tracker_api_key')
           setLoading(false)
           return
         }
 
-        // ✅ ИСПРАВЛЕНО: Проверяем что user_id существует
         if (!userData.user_id) {
-          console.error('❌ User found but user_id is missing:', userData)
-          // Создаем user_id если его нет
           const newUserId = crypto.randomUUID()
           await supabase
             .from('users')
             .update({ user_id: newUserId })
             .eq('id', userData.id)
-          
           userData.user_id = newUserId
-          console.log('✅ Created missing user_id:', newUserId)
         }
 
-        // Обновляем последнюю активность
         await supabase
           .from('users')
           .update({ last_active: new Date().toISOString() })
@@ -79,19 +68,15 @@ export function AuthProvider({ children }: AuthProviderProps) {
           user_id: userData.user_id,
           api_key: userData.api_key!,
           name: userData.name || undefined,
+          username: userData.name || 'Пользователь',
           created_at: userData.created_at
         }
 
-        console.log('✅ Setting user object:', userObj)
         setUser(userObj)
-        // ✅ Используем id вместо user_id для совместимости с существующими задачами
-        console.log('✅ Setting userId in store:', userData.id)
         setUserId(userData.id)
-      } else {
-        console.log('🔍 No valid API key found')
       }
     } catch (error) {
-      console.error('❌ Auth check failed:', error)
+      console.error('Auth check failed:', error)
       localStorage.removeItem('tracker_api_key')
     } finally {
       setLoading(false)
@@ -102,7 +87,11 @@ export function AuthProvider({ children }: AuthProviderProps) {
     localStorage.removeItem('tracker_api_key')
     setUser(null)
     setUserId(null)
-    window.location.reload()
+    // Reset all store state
+    useAppStore.getState().setTasks([])
+    useAppStore.getState().setRecurringTasks([])
+    useAppStore.getState().setTaskCompletions([])
+    useAppStore.getState().setSubtasks([])
   }
 
   const value: AuthContextType = {

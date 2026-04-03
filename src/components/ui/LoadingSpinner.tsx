@@ -6,9 +6,9 @@ interface LoadingSpinnerProps {
   size?: 'sm' | 'md' | 'lg'
 }
 
-export const LoadingSpinner: React.FC<LoadingSpinnerProps> = ({ 
-  className, 
-  size = 'md' 
+export const LoadingSpinner: React.FC<LoadingSpinnerProps> = ({
+  className,
+  size = 'md'
 }) => {
   const sizeClasses = {
     sm: 'w-4 h-4',
@@ -19,11 +19,14 @@ export const LoadingSpinner: React.FC<LoadingSpinnerProps> = ({
   return (
     <div
       className={cn(
-        'animate-spin rounded-full border-2 border-gray-300 border-t-primary',
+        'animate-spin rounded-full border-2 border-[var(--color-border-primary)] border-t-[var(--color-accent)]',
         sizeClasses[size],
         className
       )}
-    />
+      role="status"
+      aria-label="Загрузка"
+    >
+      <span className="sr-only">Загрузка...</span>
+    </div>
   )
 }
-

@@ -1,14 +1,24 @@
-import React from 'react'
+import React, { lazy, Suspense } from 'react'
+import { AnimatePresence, motion } from 'framer-motion'
 import { useAppStore } from '@/store'
 import { Navigation } from '@/components/Navigation'
+import { BottomNavigation } from '@/components/BottomNavigation'
 import { TodayView } from '@/components/views/TodayView'
 import { TasksView } from '@/components/views/TasksView'
 import { IdeasView } from '@/components/views/IdeasView'
 import { RecurringView } from '@/components/views/RecurringView'
-import { AnalyticsView } from '@/components/views/AnalyticsView'
+import { LoadingSpinner } from '@/components/ui/LoadingSpinner'
+import { variants, transitions } from '@/lib/animations'
+import { useKeyboardShortcuts } from '@/hooks/useKeyboardShortcuts'
+
+// Lazy load AnalyticsView (heavier component with calculations)
+const AnalyticsView = lazy(() =>
+  import('@/components/views/AnalyticsView').then(m => ({ default: m.AnalyticsView }))
+)
 
 export const Layout: React.FC = () => {
   const { currentCategory } = useAppStore()
+  useKeyboardShortcuts()
 
   const renderCurrentView = () => {
     switch (currentCategory) {
@@ -21,31 +31,45 @@ export const Layout: React.FC = () => {
       case 'recurring':
         return <RecurringView />
       case 'analytics':
-        return <AnalyticsView />
+        return (
+          <Suspense fallback={
+            <div className="flex items-center justify-center py-20">
+              <LoadingSpinner size="lg" />
+            </div>
+          }>
+            <AnalyticsView />
+          </Suspense>
+        )
       default:
         return <TodayView />
     }
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-50 via-gray-50 to-gray-100 dark:from-gray-900 dark:via-gray-900 dark:to-gray-800">
-      <div className="container mx-auto px-4 py-4 max-w-4xl">
+    <div className="min-h-screen bg-[var(--color-bg-secondary)]">
+      <div className="container mx-auto px-4 py-4 max-w-4xl lg:max-w-5xl">
         <header className="mb-6 sm:mb-8">
-          <div className="text-center mb-6">
-            <h1 className="text-2xl sm:text-3xl lg:text-4xl font-bold text-gray-900 dark:text-white mb-2 tracking-tight">
-              Трекер задач
-            </h1>
-            <p className="text-sm sm:text-base text-gray-500 dark:text-gray-400">
-              Организуйте свои дела эффективно
-            </p>
-          </div>
           <Navigation />
         </header>
 
-        <main className="pb-safe">
-          {renderCurrentView()}
+        <main className="pb-bottom-nav sm:pb-0">
+          <AnimatePresence mode="wait">
+            <motion.div
+              key={currentCategory}
+              initial="enter"
+              animate="center"
+              exit="exit"
+              variants={variants.viewTransition}
+              transition={transitions.smooth}
+            >
+              {renderCurrentView()}
+            </motion.div>
+          </AnimatePresence>
         </main>
       </div>
+
+      {/* Mobile bottom navigation */}
+      <BottomNavigation />
     </div>
   )
 }

@@ -1,5 +1,7 @@
-import React, { useEffect, useState } from 'react'
+import React, { useMemo } from 'react'
+import { BarChart3 } from 'lucide-react'
 import { useAppStore } from '../../store'
+import { EmptyState } from '../ui/EmptyState'
 
 interface AnalyticsData {
   averageCompletionRate: number
@@ -9,18 +11,9 @@ interface AnalyticsData {
 
 export function AnalyticsView() {
   const { tasks, recurringTasks, taskCompletions } = useAppStore()
-  const [analytics, setAnalytics] = useState<AnalyticsData>({
-    averageCompletionRate: 0,
-    weeklyCompletionRates: [],
-    mostFailedRecurringTask: null
-  })
 
-  useEffect(() => {
-    calculateAnalytics()
-  }, [tasks, recurringTasks, taskCompletions])
-
-  const calculateAnalytics = () => {
-    // 1. Средняя закрываемость в день
+  const analytics = useMemo<AnalyticsData>(() => {
+    // 1. Средняя закрываемость в день (30 дней)
     const last30Days = Array.from({ length: 30 }, (_, i) => {
       const date = new Date()
       date.setDate(date.getDate() - i)
@@ -51,12 +44,12 @@ export function AnalyticsView() {
 
     const averageCompletionRate = dailyRates.reduce((sum, rate) => sum + rate, 0) / dailyRates.length
 
-    // 2. Закрываемость по итогам недели (последние 4 недели)
+    // 2. Закрываемость по неделям (4 недели)
     const weeklyRates = []
     for (let week = 0; week < 4; week++) {
       const weekStart = new Date()
       weekStart.setDate(weekStart.getDate() - (week * 7) - weekStart.getDay())
-      
+
       const weekDays = Array.from({ length: 7 }, (_, i) => {
         const date = new Date(weekStart)
         date.setDate(date.getDate() + i)
@@ -86,12 +79,13 @@ export function AnalyticsView() {
       })
 
       const weekAverage = weekRates.reduce((sum, rate) => sum + rate, 0) / weekRates.length
-      const weekLabel = `${weekStart.getDate()}.${weekStart.getMonth() + 1} - ${new Date(weekStart.getTime() + 6 * 24 * 60 * 60 * 1000).getDate()}.${new Date(weekStart.getTime() + 6 * 24 * 60 * 60 * 1000).getMonth() + 1}`
-      
+      const endDate = new Date(weekStart.getTime() + 6 * 24 * 60 * 60 * 1000)
+      const weekLabel = `${weekStart.getDate()}.${weekStart.getMonth() + 1} – ${endDate.getDate()}.${endDate.getMonth() + 1}`
+
       weeklyRates.unshift({ week: weekLabel, rate: weekAverage })
     }
 
-    // 3. Задача которую чаще всего не удавалось закрыть из регулярных
+    // 3. Самая проблемная регулярная задача
     const recurringTaskFailures = recurringTasks.map(rt => {
       const expectedDays = last30Days.filter(date => {
         if (rt.frequency === 'daily') return true
@@ -113,53 +107,68 @@ export function AnalyticsView() {
     })
 
     const mostFailedRecurringTask = recurringTaskFailures.length > 0
-      ? recurringTaskFailures.reduce((max, current) => 
+      ? recurringTaskFailures.reduce((max, current) =>
           current.failureCount > max.failureCount ? current : max
         )
       : null
 
-    setAnalytics({
+    return {
       averageCompletionRate,
       weeklyCompletionRates: weeklyRates,
       mostFailedRecurringTask: mostFailedRecurringTask?.failureCount > 0 ? mostFailedRecurringTask : null
-    })
+    }
+  }, [tasks, recurringTasks, taskCompletions])
+
+  const hasData = tasks.length > 0 || recurringTasks.length > 0
+
+  if (!hasData) {
+    return (
+      <div className="space-y-6">
+        <h2 className="text-2xl sm:text-3xl font-bold tracking-tight text-[var(--color-text-primary)]">Аналитика</h2>
+        <EmptyState
+          icon={<BarChart3 className="w-12 h-12" />}
+          title="Нет данных для аналитики"
+          description="Начните добавлять и выполнять задачи, чтобы увидеть статистику"
+        />
+      </div>
+    )
   }
 
   return (
     <div className="space-y-6">
-      <h2 className="text-2xl font-bold text-gray-900 dark:text-white">📊 Аналитика</h2>
+      <h2 className="text-2xl sm:text-3xl font-bold tracking-tight text-[var(--color-text-primary)]">Аналитика</h2>
 
       <div className="grid gap-6 md:grid-cols-1 lg:grid-cols-2">
-        {/* Средняя закрываемость в день */}
-        <div className="bg-white dark:bg-gray-800 p-6 rounded-lg border border-gray-200 dark:border-gray-700">
-          <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
+        {/* Средняя закрываемость */}
+        <div className="bg-[var(--color-bg-elevated)] p-6 rounded-xl border border-[var(--color-border-primary)]">
+          <h3 className="text-lg font-semibold text-[var(--color-text-primary)] mb-4">
             Средняя закрываемость в день
           </h3>
           <div className="text-center">
-            <div className="text-4xl font-bold text-blue-600 dark:text-blue-400 mb-2">
+            <div className="text-4xl font-bold text-[var(--color-accent)] mb-2">
               {analytics.averageCompletionRate.toFixed(1)}%
             </div>
-            <p className="text-gray-600 dark:text-gray-400">за последние 30 дней</p>
+            <p className="text-sm text-[var(--color-text-secondary)]">за последние 30 дней</p>
           </div>
         </div>
 
         {/* Закрываемость по неделям */}
-        <div className="bg-white dark:bg-gray-800 p-6 rounded-lg border border-gray-200 dark:border-gray-700">
-          <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
-            Закрываемость по итогам недели
+        <div className="bg-[var(--color-bg-elevated)] p-6 rounded-xl border border-[var(--color-border-primary)]">
+          <h3 className="text-lg font-semibold text-[var(--color-text-primary)] mb-4">
+            Закрываемость по неделям
           </h3>
           <div className="space-y-3">
             {analytics.weeklyCompletionRates.map((week, index) => (
               <div key={index} className="flex items-center justify-between">
-                <span className="text-sm text-gray-600 dark:text-gray-400">{week.week}</span>
+                <span className="text-sm text-[var(--color-text-secondary)]">{week.week}</span>
                 <div className="flex items-center gap-2">
-                  <div className="w-24 bg-gray-200 dark:bg-gray-700 rounded-full h-2">
+                  <div className="w-24 bg-[var(--color-bg-tertiary)] rounded-full h-2">
                     <div
-                      className="bg-blue-600 h-2 rounded-full transition-all"
+                      className="bg-[var(--color-accent)] h-2 rounded-full transition-all duration-500"
                       style={{ width: `${Math.min(week.rate, 100)}%` }}
                     />
                   </div>
-                  <span className="text-sm font-medium text-gray-900 dark:text-white w-12 text-right">
+                  <span className="text-sm font-medium text-[var(--color-text-primary)] w-12 text-right">
                     {week.rate.toFixed(0)}%
                   </span>
                 </div>
@@ -170,30 +179,27 @@ export function AnalyticsView() {
       </div>
 
       {/* Самая проблемная регулярная задача */}
-      <div className="bg-white dark:bg-gray-800 p-6 rounded-lg border border-gray-200 dark:border-gray-700">
-        <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
+      <div className="bg-[var(--color-bg-elevated)] p-6 rounded-xl border border-[var(--color-border-primary)]">
+        <h3 className="text-lg font-semibold text-[var(--color-text-primary)] mb-4">
           Задача, которую чаще всего не удавалось закрыть
         </h3>
         {analytics.mostFailedRecurringTask ? (
-          <div className="flex items-center justify-between p-4 bg-red-50 dark:bg-red-900/30 rounded-lg">
+          <div className="flex items-center justify-between p-4 bg-[var(--color-danger-light)] rounded-xl">
             <div>
-              <p className="font-medium text-red-900 dark:text-red-300">
+              <p className="font-medium text-[var(--color-text-primary)]">
                 {analytics.mostFailedRecurringTask.title}
               </p>
-              <p className="text-sm text-red-600 dark:text-red-400">
-                Пропущено {analytics.mostFailedRecurringTask.failureCount} раз за последние 30 дней
+              <p className="text-sm text-[var(--color-danger)]">
+                Пропущено {analytics.mostFailedRecurringTask.failureCount} раз за 30 дней
               </p>
             </div>
-            <div className="text-2xl">⚠️</div>
           </div>
         ) : (
-          <div className="text-center py-8 text-gray-500 dark:text-gray-400">
-            <div className="text-4xl mb-2">🎉</div>
-            <p>Отлично! Все регулярные задачи выполняются вовремя</p>
+          <div className="text-center py-8 text-[var(--color-text-secondary)]">
+            <p>Все регулярные задачи выполняются вовремя</p>
           </div>
         )}
       </div>
     </div>
   )
 }
-

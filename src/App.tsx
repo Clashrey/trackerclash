@@ -1,9 +1,11 @@
 import React, { useEffect, useRef, useState } from 'react'
+import { Toaster } from 'sonner'
 import { useAuth } from './hooks/useAuth'
 import { useDatabase } from './hooks/useDatabase'
 import { useAppStore } from './store'
 import { AuthForm } from './components/AuthForm'
 import { Layout } from './components/Layout'
+import { CommandPalette } from './components/CommandPalette'
 import { LoadingSpinner } from './components/ui/LoadingSpinner'
 
 function App() {
@@ -12,10 +14,7 @@ function App() {
   const userId = useAppStore(state => state.userId)
   const isDarkMode = useAppStore(state => state.isDarkMode)
 
-  // FIX #9: Храним userId который был загружен — автосброс при смене пользователя
   const dataLoaded = useRef<string | null>(null)
-
-  // FIX #5: Состояние ошибки загрузки
   const [loadError, setLoadError] = useState<string | null>(null)
 
   useEffect(() => {
@@ -26,13 +25,12 @@ function App() {
     }
   }, [isDarkMode])
 
-  // FIX #9: Перезагружаем при смене userId (не только при первом появлении)
   useEffect(() => {
     if (userId && dataLoaded.current !== userId) {
       dataLoaded.current = userId
       setLoadError(null)
       loadAllData().catch((err) => {
-        console.error('❌ loadAllData failed:', err)
+        console.error('loadAllData failed:', err)
         setLoadError('Не удалось загрузить данные. Проверьте соединение и обновите страницу.')
       })
     }
@@ -40,26 +38,30 @@ function App() {
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-gray-900">
-        <LoadingSpinner />
+      <div className="min-h-screen flex items-center justify-center bg-[var(--color-bg-secondary)]">
+        <LoadingSpinner size="lg" />
       </div>
     )
   }
 
   if (!user) {
-    return <AuthForm />
+    return (
+      <>
+        <AuthForm />
+        <Toaster position="bottom-center" richColors />
+      </>
+    )
   }
 
-  // FIX #5: Показываем ошибку загрузки пользователю
   if (loadError) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-gray-900">
+      <div className="min-h-screen flex items-center justify-center bg-[var(--color-bg-secondary)]">
         <div className="text-center p-8 max-w-md">
           <div className="text-4xl mb-4">⚠️</div>
-          <p className="text-red-600 dark:text-red-400 mb-6 text-lg">{loadError}</p>
+          <p className="text-[var(--color-danger)] mb-6 text-lg">{loadError}</p>
           <button
             onClick={() => window.location.reload()}
-            className="px-6 py-3 bg-blue-600 text-white rounded-xl hover:bg-blue-700 transition-colors font-medium"
+            className="px-6 py-3 bg-[var(--color-accent)] text-white rounded-xl hover:bg-[var(--color-accent-hover)] transition-colors font-medium"
           >
             Обновить страницу
           </button>
@@ -68,7 +70,13 @@ function App() {
     )
   }
 
-  return <Layout />
+  return (
+    <>
+      <Layout />
+      <CommandPalette />
+      <Toaster position="bottom-center" richColors />
+    </>
+  )
 }
 
 export default App

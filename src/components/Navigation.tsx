@@ -1,5 +1,6 @@
 import React from 'react'
-import { Moon, Sun } from 'lucide-react'
+import { motion } from 'framer-motion'
+import { Moon, Sun, LogOut, Search } from 'lucide-react'
 import { useAuth } from '../hooks/useAuth'
 import { useAppStore } from '../store'
 
@@ -7,7 +8,6 @@ export function Navigation() {
   const { user, signOut } = useAuth()
   const { currentCategory, setCurrentCategory, tasks, recurringTasks, selectedDate, isDarkMode, toggleDarkMode } = useAppStore()
 
-  // Для "Сегодня" считаем только задачи на выбранную дату
   const todayTasksCount = tasks.filter(t => t.category === 'today' && t.date === selectedDate).length
 
   const categories = [
@@ -23,55 +23,87 @@ export function Navigation() {
       {/* Header */}
       <div className="flex justify-between items-center">
         <div className="flex items-center space-x-2">
-          <span className="text-2xl">📋</span>
-          <h1 className="text-xl font-semibold text-gray-900 dark:text-white">Трекер задач</h1>
+          <span className="text-2xl" aria-hidden="true">📋</span>
+          <h1 className="text-xl font-semibold text-[var(--color-text-primary)]">Трекер задач</h1>
         </div>
-        <div className="flex items-center space-x-3">
-          {/* Dark mode toggle */}
+        <div className="flex items-center space-x-2">
+          {/* Cmd+K search hint */}
+          <button
+            onClick={() => {
+              document.dispatchEvent(new KeyboardEvent('keydown', { key: 'k', metaKey: true }))
+            }}
+            className="hidden sm:flex items-center gap-2 px-3 py-1.5 rounded-lg bg-[var(--color-bg-tertiary)] text-[var(--color-text-tertiary)] hover:text-[var(--color-text-secondary)] transition-colors text-xs"
+            aria-label="Открыть поиск команд"
+          >
+            <Search size={14} />
+            <span>Поиск</span>
+            <kbd className="ml-1 px-1.5 py-0.5 rounded bg-[var(--color-bg-elevated)] border border-[var(--color-border-primary)] text-[10px] font-mono">⌘K</kbd>
+          </button>
           <button
             onClick={toggleDarkMode}
-            className="p-2 rounded-lg bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors"
-            title={isDarkMode ? 'Светлая тема' : 'Тёмная тема'}
+            className="p-2 rounded-lg bg-[var(--color-bg-tertiary)] text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)] transition-colors"
+            aria-label={isDarkMode ? 'Переключить на светлую тему' : 'Переключить на тёмную тему'}
           >
             {isDarkMode ? <Sun size={18} /> : <Moon size={18} />}
           </button>
-          <span className="text-sm text-gray-600 dark:text-gray-400">
+          <span className="text-sm text-[var(--color-text-secondary)] hidden sm:inline">
             {user?.username}
           </span>
           <button
             onClick={signOut}
-            className="text-sm text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 transition-colors px-3 py-1 rounded bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600"
+            className="flex items-center gap-1.5 text-sm text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)] transition-colors px-3 py-1.5 rounded-lg bg-[var(--color-bg-tertiary)] hover:bg-[var(--color-border-primary)]"
+            aria-label="Выйти из аккаунта"
           >
-            Выйти
+            <LogOut size={14} />
+            <span className="hidden sm:inline">Выйти</span>
           </button>
         </div>
       </div>
 
-      {/* Navigation Tabs */}
-      <div className="flex flex-wrap gap-2">
-        {categories.map((category) => (
-          <button
-            key={category.id}
-            onClick={() => setCurrentCategory(category.id as any)}
-            className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
-              currentCategory === category.id
-                ? 'bg-blue-600 text-white'
-                : 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600'
-            }`}
-          >
-            {category.label}
-            {category.count > 0 && (
-              <span className={`ml-2 px-2 py-0.5 rounded-full text-xs ${
-                currentCategory === category.id
-                  ? 'bg-blue-500 text-white'
-                  : 'bg-gray-300 dark:bg-gray-600 text-gray-700 dark:text-gray-300'
-              }`}>
-                {category.count}
-              </span>
-            )}
-          </button>
-        ))}
-      </div>
+      {/* Navigation Tabs — hidden on mobile (bottom nav used instead) */}
+      <nav aria-label="Основная навигация" className="hidden sm:block">
+        <div
+          role="tablist"
+          aria-label="Разделы трекера"
+          className="flex gap-1 overflow-x-auto scrollbar-hide border-b border-[var(--color-border-primary)] pb-px"
+        >
+          {categories.map((category) => {
+            const isActive = currentCategory === category.id
+            return (
+              <button
+                key={category.id}
+                role="tab"
+                aria-selected={isActive}
+                aria-controls={`panel-${category.id}`}
+                onClick={() => setCurrentCategory(category.id as any)}
+                className={`relative px-4 py-2.5 text-sm font-medium whitespace-nowrap transition-colors ${
+                  isActive
+                    ? 'text-[var(--color-accent)]'
+                    : 'text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)]'
+                }`}
+              >
+                {category.label}
+                {category.count > 0 && (
+                  <span className={`ml-2 px-1.5 py-0.5 rounded-full text-xs font-medium ${
+                    isActive
+                      ? 'bg-[var(--color-accent-light)] text-[var(--color-accent)]'
+                      : 'bg-[var(--color-bg-tertiary)] text-[var(--color-text-secondary)]'
+                  }`}>
+                    {category.count}
+                  </span>
+                )}
+                {isActive && (
+                  <motion.div
+                    layoutId="activeTab"
+                    className="absolute bottom-0 left-0 right-0 h-0.5 bg-[var(--color-accent)] rounded-full"
+                    transition={{ type: 'spring', stiffness: 500, damping: 30 }}
+                  />
+                )}
+              </button>
+            )
+          })}
+        </div>
+      </nav>
     </div>
   )
 }

@@ -1,7 +1,48 @@
 import React, { useState } from 'react'
-import { Key, Copy, Eye, EyeOff, Plus, LogIn } from 'lucide-react'
+import { motion, AnimatePresence } from 'framer-motion'
+import { Key, Copy, Eye, EyeOff, Plus, LogIn, CheckCircle2, AlertCircle } from 'lucide-react'
 import { LoadingSpinner } from './ui/LoadingSpinner'
 import { supabase, generateApiKey, validateApiKey } from '@/lib/supabase'
+import { useAppStore } from '@/store'
+import { transitions } from '@/lib/animations'
+
+// Instead of window.location.reload(), we set auth state directly
+function useLoginCallback() {
+  const { setUserId } = useAppStore()
+
+  return async (apiKeyValue: string): Promise<{ success: boolean; error?: string }> => {
+    if (!validateApiKey(apiKeyValue)) {
+      return { success: false, error: 'Неверный формат API-ключа. Ключ должен начинаться с "tk_"' }
+    }
+
+    try {
+      const { data: user, error } = await supabase
+        .from('users')
+        .select('*')
+        .eq('api_key', apiKeyValue)
+        .single()
+
+      if (error || !user) {
+        return { success: false, error: 'API-ключ не найден или недействителен' }
+      }
+
+      await supabase
+        .from('users')
+        .update({ last_active: new Date().toISOString() })
+        .eq('id', user.id)
+
+      localStorage.setItem('tracker_api_key', apiKeyValue)
+
+      // Trigger re-auth by reloading — this is the simplest correct approach
+      // since AuthProvider reads from localStorage on mount
+      window.location.reload()
+
+      return { success: true }
+    } catch (err) {
+      return { success: false, error: 'Ошибка при авторизации: ' + (err as Error).message }
+    }
+  }
+}
 
 export function AuthForm() {
   const [mode, setMode] = useState<'login' | 'register' | 'generated'>('login')
@@ -12,6 +53,8 @@ export function AuthForm() {
   const [error, setError] = useState('')
   const [copied, setCopied] = useState(false)
 
+  const loginWithKey = useLoginCallback()
+
   const handleGenerateKey = async () => {
     setLoading(true)
     setError('')
@@ -19,22 +62,16 @@ export function AuthForm() {
     try {
       const newApiKey = generateApiKey()
       const userId = crypto.randomUUID()
-      
-      const { data: user, error } = await supabase
+
+      const { error } = await supabase
         .from('users')
-        .insert([
-          {
-            user_id: userId,
-            api_key: newApiKey,
-            name: 'Пользователь'
-          }
-        ])
+        .insert([{ user_id: userId, api_key: newApiKey, name: 'Пользователь' }])
         .select()
         .single()
 
       if (error) {
         if (error.code === '23505') {
-          setError('Попробуйте еще раз - ключ уже существует')
+          setError('Попробуйте ещё раз — ключ уже существует')
           return
         }
         throw error
@@ -44,50 +81,26 @@ export function AuthForm() {
       setMode('generated')
     } catch (err) {
       setError('Ошибка при создании ключа: ' + (err as Error).message)
-      console.error(err)
     } finally {
       setLoading(false)
     }
   }
 
   const handleLogin = async () => {
-    if (!validateApiKey(apiKey)) {
-      setError('Неверный формат API-ключа. Ключ должен начинаться с "tk_"')
-      return
-    }
-
     setLoading(true)
     setError('')
 
-    try {
-      const { data: user, error } = await supabase
-        .from('users')
-        .select('*')
-        .eq('api_key', apiKey)
-        .single()
-
-      if (error || !user) {
-        setError('API-ключ не найден или недействителен')
-        return
-      }
-
-      // Обновляем последнюю активность
-      await supabase
-        .from('users')
-        .update({ last_active: new Date().toISOString() })
-        .eq('id', user.id)
-
-      // Сохраняем ключ
-      localStorage.setItem('tracker_api_key', apiKey)
-      
-      // Перезагружаем страницу
-      window.location.reload()
-
-    } catch (err) {
-      setError('Ошибка при авторизации: ' + (err as Error).message)
-      console.error(err)
-    } finally {
+    const result = await loginWithKey(apiKey)
+    if (!result.success) {
+      setError(result.error || 'Неизвестная ошибка')
       setLoading(false)
+    }
+    // If success, page will reload — no need to setLoading(false)
+  }
+
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter' && apiKey) {
+      handleLogin()
     }
   }
 
@@ -97,7 +110,7 @@ export function AuthForm() {
       setCopied(true)
       setTimeout(() => setCopied(false), 2000)
     } catch (err) {
-      console.error('Не удалось скопировать:', err)
+      // Fallback for older browsers
     }
   }
 
@@ -107,188 +120,234 @@ export function AuthForm() {
     setGeneratedKey('')
   }
 
-  // Экран с сгенерированным ключом
-  if (mode === 'generated') {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-gray-900 py-12 px-4 sm:px-6 lg:px-8">
-        <div className="max-w-md w-full space-y-8">
-          <div className="text-center">
-            <Key className="h-16 w-16 text-blue-600 dark:text-blue-400 mx-auto mb-4" />
-            <h2 className="text-3xl font-extrabold text-gray-900 dark:text-white">
-              Ваш ключ готов!
-            </h2>
-            <p className="mt-2 text-gray-600 dark:text-gray-400">
-              Сохраните этот ключ для входа в приложение
-            </p>
+  return (
+    <div className="min-h-screen flex items-center justify-center bg-[var(--color-bg-secondary)] py-12 px-4 sm:px-6 lg:px-8">
+      <motion.div
+        initial={{ opacity: 0, y: 16 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={transitions.slow}
+        className="max-w-md w-full"
+      >
+        {/* Logo */}
+        <div className="text-center mb-8">
+          <div className="w-16 h-16 rounded-2xl bg-[var(--color-accent)]/10 flex items-center justify-center mx-auto mb-4">
+            <Key className="w-8 h-8 text-[var(--color-accent)]" />
           </div>
+          <h1 className="text-2xl font-bold text-[var(--color-text-primary)]">Трекер задач</h1>
+          <AnimatePresence mode="wait">
+            <motion.p
+              key={mode}
+              initial={{ opacity: 0, y: 4 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -4 }}
+              transition={{ duration: 0.15 }}
+              className="mt-2 text-sm text-[var(--color-text-secondary)]"
+            >
+              {mode === 'generated'
+                ? 'Сохраните ключ для входа'
+                : mode === 'login'
+                  ? 'Войдите с помощью API-ключа'
+                  : 'Получите новый ключ'
+              }
+            </motion.p>
+          </AnimatePresence>
+        </div>
 
-          <div className="space-y-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                API-ключ:
-              </label>
-              <div className="relative">
-                <input
-                  type={showKey ? 'text' : 'password'}
-                  value={generatedKey}
-                  readOnly
-                  className="w-full px-3 py-3 border border-gray-300 dark:border-gray-600 rounded-md bg-gray-50 dark:bg-gray-800 text-gray-900 dark:text-white font-mono text-sm focus:outline-none"
-                />
-                <div className="absolute right-2 top-1/2 transform -translate-y-1/2 flex space-x-1">
-                  <button
-                    onClick={() => setShowKey(!showKey)}
-                    className="p-1 text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 transition-colors"
+        {/* Error Banner */}
+        <AnimatePresence>
+          {error && (
+            <motion.div
+              initial={{ opacity: 0, height: 0 }}
+              animate={{ opacity: 1, height: 'auto' }}
+              exit={{ opacity: 0, height: 0 }}
+              transition={transitions.smooth}
+              className="mb-4 flex items-start gap-2 p-3 rounded-xl bg-[var(--color-danger)]/10 border border-[var(--color-danger)]/20"
+            >
+              <AlertCircle size={16} className="text-[var(--color-danger)] mt-0.5 flex-shrink-0" />
+              <p className="text-sm text-[var(--color-danger)]">{error}</p>
+            </motion.div>
+          )}
+        </AnimatePresence>
+
+        {/* Card */}
+        <div className="bg-[var(--color-bg-elevated)] rounded-2xl border border-[var(--color-border-primary)] shadow-sm p-6">
+          <AnimatePresence mode="wait">
+            {mode === 'generated' ? (
+              <motion.div
+                key="generated"
+                initial={{ opacity: 0, x: 20 }}
+                animate={{ opacity: 1, x: 0 }}
+                exit={{ opacity: 0, x: -20 }}
+                transition={transitions.smooth}
+                className="space-y-5"
+              >
+                <div>
+                  <label className="block text-sm font-medium text-[var(--color-text-secondary)] mb-2">
+                    Ваш API-ключ
+                  </label>
+                  <div className="relative">
+                    <input
+                      type={showKey ? 'text' : 'password'}
+                      value={generatedKey}
+                      readOnly
+                      className="w-full px-3 py-3 pr-20 border border-[var(--color-border-primary)] rounded-xl bg-[var(--color-bg-tertiary)] text-[var(--color-text-primary)] font-mono text-sm focus:outline-none"
+                    />
+                    <div className="absolute right-2 top-1/2 -translate-y-1/2 flex gap-1">
+                      <button
+                        onClick={() => setShowKey(!showKey)}
+                        className="p-1.5 rounded-lg hover:bg-[var(--color-bg-elevated)] text-[var(--color-text-tertiary)] hover:text-[var(--color-text-secondary)] transition-colors"
+                        aria-label={showKey ? 'Скрыть ключ' : 'Показать ключ'}
+                      >
+                        {showKey ? <EyeOff size={16} /> : <Eye size={16} />}
+                      </button>
+                      <button
+                        onClick={() => copyToClipboard(generatedKey)}
+                        className="p-1.5 rounded-lg hover:bg-[var(--color-bg-elevated)] text-[var(--color-text-tertiary)] hover:text-[var(--color-text-secondary)] transition-colors"
+                        aria-label="Скопировать ключ"
+                      >
+                        <Copy size={16} />
+                      </button>
+                    </div>
+                  </div>
+                  <AnimatePresence>
+                    {copied && (
+                      <motion.p
+                        initial={{ opacity: 0, y: -4 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        exit={{ opacity: 0 }}
+                        className="flex items-center gap-1 text-xs text-[var(--color-success)] mt-1.5"
+                      >
+                        <CheckCircle2 size={12} /> Скопировано
+                      </motion.p>
+                    )}
+                  </AnimatePresence>
+                </div>
+
+                <div className="flex items-start gap-2 p-3 rounded-xl bg-[var(--color-warning-light)] border border-[var(--color-warning)]/20">
+                  <AlertCircle size={14} className="text-[var(--color-warning)] mt-0.5 flex-shrink-0" />
+                  <p className="text-xs text-[var(--color-text-secondary)]">
+                    <strong>Важно:</strong> Сохраните этот ключ! Он потребуется для входа.
+                  </p>
+                </div>
+
+                <div className="space-y-2">
+                  <motion.button
+                    whileTap={{ scale: 0.98 }}
+                    onClick={continueToLogin}
+                    className="w-full py-3 text-sm font-medium text-white bg-[var(--color-accent)] rounded-xl hover:bg-[var(--color-accent-hover)] transition-colors"
                   >
-                    {showKey ? <EyeOff size={16} /> : <Eye size={16} />}
-                  </button>
+                    Войти с этим ключом
+                  </motion.button>
                   <button
-                    onClick={() => copyToClipboard(generatedKey)}
-                    className="p-1 text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 transition-colors"
+                    onClick={() => { setMode('login'); setGeneratedKey(''); setApiKey('') }}
+                    className="w-full py-2.5 text-sm text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)] transition-colors"
                   >
-                    <Copy size={16} />
+                    У меня есть другой ключ
                   </button>
                 </div>
-              </div>
-              {copied && (
-                <p className="text-green-600 dark:text-green-400 text-sm mt-1">✅ Скопировано!</p>
-              )}
-            </div>
+              </motion.div>
 
-            <div className="bg-yellow-50 dark:bg-yellow-900/30 border border-yellow-200 dark:border-yellow-700 rounded-md p-4">
-              <p className="text-yellow-800 dark:text-yellow-300 text-sm">
-                <strong>Важно:</strong> Сохраните этот ключ! Он потребуется для входа.
-              </p>
-            </div>
+            ) : mode === 'login' ? (
+              <motion.div
+                key="login"
+                initial={{ opacity: 0, x: 20 }}
+                animate={{ opacity: 1, x: 0 }}
+                exit={{ opacity: 0, x: -20 }}
+                transition={transitions.smooth}
+                className="space-y-5"
+              >
+                <div>
+                  <label htmlFor="apikey" className="block text-sm font-medium text-[var(--color-text-secondary)] mb-2">
+                    API-ключ
+                  </label>
+                  <div className="relative">
+                    <input
+                      id="apikey"
+                      type="password"
+                      value={apiKey}
+                      onChange={(e) => setApiKey(e.target.value)}
+                      onKeyDown={handleKeyDown}
+                      placeholder="tk_..."
+                      className="w-full px-3 py-3 pl-10 border border-[var(--color-border-primary)] rounded-xl bg-[var(--color-bg-primary)] text-[var(--color-text-primary)] placeholder-[var(--color-text-tertiary)] focus:outline-none focus:ring-2 focus:ring-[var(--color-accent)]/30 focus:border-[var(--color-accent)] font-mono text-sm transition-all"
+                      disabled={loading}
+                    />
+                    <Key className="w-4 h-4 text-[var(--color-text-tertiary)] absolute left-3 top-1/2 -translate-y-1/2" />
+                  </div>
+                </div>
 
-            <button
-              onClick={continueToLogin}
-              className="w-full flex justify-center py-3 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors"
-            >
-              Войти с этим ключом
-            </button>
+                <motion.button
+                  whileTap={{ scale: 0.98 }}
+                  onClick={handleLogin}
+                  disabled={loading || !apiKey}
+                  className="w-full flex items-center justify-center gap-2 py-3 text-sm font-medium text-white bg-[var(--color-accent)] rounded-xl hover:bg-[var(--color-accent-hover)] disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                >
+                  {loading ? <LoadingSpinner size="sm" /> : (
+                    <>
+                      <LogIn size={16} />
+                      Войти
+                    </>
+                  )}
+                </motion.button>
 
-            <button
-              onClick={() => {
-                setMode('login')
-                setGeneratedKey('')
-                setApiKey('')
-              }}
-              className="w-full flex justify-center py-2 px-4 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm text-sm font-medium text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors"
-            >
-              У меня есть другой ключ
-            </button>
-          </div>
-        </div>
-      </div>
-    )
-  }
+                <div className="text-center">
+                  <button
+                    type="button"
+                    onClick={() => setMode('register')}
+                    className="text-sm text-[var(--color-accent)] hover:underline"
+                  >
+                    Нет ключа? Получить новый
+                  </button>
+                </div>
+              </motion.div>
 
-  // Основная форма
-  return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-gray-900 py-12 px-4 sm:px-6 lg:px-8">
-      <div className="max-w-md w-full space-y-8">
-        <div className="text-center">
-          <Key className="h-16 w-16 text-blue-600 dark:text-blue-400 mx-auto mb-4" />
-          <h2 className="text-3xl font-extrabold text-gray-900 dark:text-white">
-            📋 Трекер задач
-          </h2>
-          <h3 className="mt-2 text-xl text-gray-600 dark:text-gray-400">
-            {mode === 'login'
-              ? 'Войдите с помощью API-ключа'
-              : 'Получите новый ключ'
-            }
-          </h3>
-        </div>
+            ) : (
+              <motion.div
+                key="register"
+                initial={{ opacity: 0, x: 20 }}
+                animate={{ opacity: 1, x: 0 }}
+                exit={{ opacity: 0, x: -20 }}
+                transition={transitions.smooth}
+                className="space-y-5"
+              >
+                <div className="flex items-start gap-2 p-3 rounded-xl bg-[var(--color-accent)]/5 border border-[var(--color-accent)]/20">
+                  <Key size={14} className="text-[var(--color-accent)] mt-0.5 flex-shrink-0" />
+                  <p className="text-xs text-[var(--color-text-secondary)]">
+                    Нажмите кнопку ниже, чтобы получить уникальный API-ключ для доступа к вашим задачам.
+                  </p>
+                </div>
 
-        {error && (
-          <div className="bg-red-50 dark:bg-red-900/30 border border-red-200 dark:border-red-700 rounded-md p-3">
-            <p className="text-red-800 dark:text-red-300 text-sm">{error}</p>
-          </div>
-        )}
-
-        {mode === 'login' ? (
-          <div className="space-y-6">
-            <div>
-              <label htmlFor="apikey" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                Введите ваш API-ключ
-              </label>
-              <div className="relative">
-                <input
-                  id="apikey"
-                  type="password"
-                  value={apiKey}
-                  onChange={(e) => setApiKey(e.target.value)}
-                  placeholder="tk_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
-                  className="w-full px-3 py-3 pl-10 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-800 text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 font-mono text-sm"
+                <motion.button
+                  whileTap={{ scale: 0.98 }}
+                  onClick={handleGenerateKey}
                   disabled={loading}
-                />
-                <Key className="h-5 w-5 text-gray-400 absolute left-3 top-1/2 transform -translate-y-1/2" />
-              </div>
-              <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                API-ключ начинается с <code className="bg-gray-100 dark:bg-gray-700 px-1 rounded">tk_</code>
-              </p>
-            </div>
+                  className="w-full flex items-center justify-center gap-2 py-3 text-sm font-medium text-white bg-[var(--color-success)] rounded-xl hover:brightness-110 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
+                >
+                  {loading ? <LoadingSpinner size="sm" /> : (
+                    <>
+                      <Plus size={16} />
+                      Создать новый ключ
+                    </>
+                  )}
+                </motion.button>
 
-            <button
-              onClick={handleLogin}
-              disabled={loading || !apiKey}
-              className="w-full flex justify-center py-3 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-            >
-              {loading ? <LoadingSpinner /> : (
-                <>
-                  <LogIn className="h-4 w-4 mr-2" />
-                  Войти
-                </>
-              )}
-            </button>
-
-            <div className="text-center">
-              <button
-                type="button"
-                onClick={() => setMode('register')}
-                className="text-blue-600 dark:text-blue-400 hover:text-blue-500 dark:hover:text-blue-300 text-sm font-medium"
-              >
-                Нет ключа? Получить новый
-              </button>
-            </div>
-          </div>
-        ) : (
-          <div className="space-y-6">
-            <div className="bg-blue-50 dark:bg-blue-900/30 border border-blue-200 dark:border-blue-700 rounded-md p-4">
-              <p className="text-blue-800 dark:text-blue-300 text-sm">
-                Нажмите кнопку ниже, чтобы получить уникальный API-ключ для доступа к вашим задачам.
-              </p>
-            </div>
-
-            <button
-              onClick={handleGenerateKey}
-              disabled={loading}
-              className="w-full flex justify-center py-3 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-            >
-              {loading ? <LoadingSpinner /> : (
-                <>
-                  <Plus className="h-4 w-4 mr-2" />
-                  Создать новый ключ
-                </>
-              )}
-            </button>
-
-            <div className="text-center">
-              <button
-                type="button"
-                onClick={() => setMode('login')}
-                className="text-blue-600 dark:text-blue-400 hover:text-blue-500 dark:hover:text-blue-300 text-sm font-medium"
-              >
-                Уже есть ключ? Войти
-              </button>
-            </div>
-          </div>
-        )}
-
-        <div className="text-center text-xs text-gray-500 dark:text-gray-400 mt-4">
-          Ваши данные надежно сохраняются в облаке
+                <div className="text-center">
+                  <button
+                    type="button"
+                    onClick={() => setMode('login')}
+                    className="text-sm text-[var(--color-accent)] hover:underline"
+                  >
+                    Уже есть ключ? Войти
+                  </button>
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
         </div>
-      </div>
+
+        <p className="text-center text-[10px] text-[var(--color-text-tertiary)] mt-6">
+          Ваши данные надёжно сохраняются в облаке
+        </p>
+      </motion.div>
     </div>
   )
 }

@@ -1,9 +1,11 @@
 @import "tailwindcss";
-@plugin "tw-animate-css";
+@import "tw-animate-css";
 
-/* ===== Design System: Color Tokens ===== */
+@custom-variant dark (&:is(.dark *));
 
-:root {
+/* ===== Design System: Color Tokens via @theme ===== */
+
+@theme {
   --color-bg-primary: #ffffff;
   --color-bg-secondary: #f8fafc;
   --color-bg-tertiary: #f1f5f9;
@@ -41,30 +43,9 @@
   --color-bg-elevated-80: rgba(255, 255, 255, 0.8);
   --color-bg-elevated-95: rgba(255, 255, 255, 0.95);
   --color-text-tertiary-40: rgba(148, 163, 184, 0.4);
-
-  /* shadcn compat */
-  --background: 0 0% 100%;
-  --foreground: 222.2 84% 4.9%;
-  --card: 0 0% 100%;
-  --card-foreground: 222.2 84% 4.9%;
-  --popover: 0 0% 100%;
-  --popover-foreground: 222.2 84% 4.9%;
-  --primary: 221.2 83.2% 53.3%;
-  --primary-foreground: 210 40% 98%;
-  --secondary: 210 40% 96%;
-  --secondary-foreground: 222.2 47.4% 11.2%;
-  --muted: 210 40% 96%;
-  --muted-foreground: 215.4 16.3% 46.9%;
-  --accent: 210 40% 96%;
-  --accent-foreground: 222.2 47.4% 11.2%;
-  --destructive: 0 84.2% 60.2%;
-  --destructive-foreground: 210 40% 98%;
-  --border: 214.3 31.8% 91.4%;
-  --input: 214.3 31.8% 91.4%;
-  --ring: 221.2 83.2% 53.3%;
-  --radius: 0.75rem;
 }
 
+/* ===== Dark theme overrides ===== */
 .dark {
   --color-bg-primary: #0f1117;
   --color-bg-secondary: #161920;
@@ -103,27 +84,6 @@
   --color-bg-elevated-80: rgba(30, 34, 48, 0.85);
   --color-bg-elevated-95: rgba(30, 34, 48, 0.97);
   --color-text-tertiary-40: rgba(125, 135, 153, 0.45);
-
-  /* shadcn compat */
-  --background: 228 20% 7%;
-  --foreground: 225 25% 95%;
-  --card: 228 18% 14%;
-  --card-foreground: 225 25% 95%;
-  --popover: 228 18% 14%;
-  --popover-foreground: 225 25% 95%;
-  --primary: 217 99% 72%;
-  --primary-foreground: 228 20% 7%;
-  --secondary: 226 18% 20%;
-  --secondary-foreground: 225 25% 95%;
-  --muted: 226 18% 20%;
-  --muted-foreground: 220 15% 65%;
-  --accent: 226 18% 20%;
-  --accent-foreground: 225 25% 95%;
-  --destructive: 0 100% 74%;
-  --destructive-foreground: 225 25% 95%;
-  --border: 226 18% 23%;
-  --input: 226 18% 23%;
-  --ring: 217 99% 60%;
 }
 
 /* ===== Base ===== */
@@ -138,6 +98,25 @@ body {
   font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+/* ===== Scrollbar ===== */
+::-webkit-scrollbar {
+  width: 6px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: var(--color-text-tertiary-40);
+  border-radius: 3px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: var(--color-text-tertiary);
 }
 
 /* ===== Utilities ===== */

@@ -15,7 +15,7 @@ export const DateNavigation: React.FC = () => {
   const isToday = format(currentDate, 'yyyy-MM-dd') === format(new Date(), 'yyyy-MM-dd')
 
   return (
-    <div className="flex items-center justify-between mb-6 bg-[var(--color-bg-elevated)]/80 backdrop-blur-sm p-4 rounded-xl border border-[var(--color-border-primary)]">
+    <div className="flex items-center justify-between mb-6 bg-[var(--color-bg-elevated-80)] backdrop-blur-sm p-4 rounded-xl border border-[var(--color-border-primary)]">
       <div className="flex items-center space-x-2">
         <button
           onClick={goToPreviousDay}

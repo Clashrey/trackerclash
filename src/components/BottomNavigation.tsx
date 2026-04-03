@@ -23,7 +23,7 @@ export const BottomNavigation: React.FC = () => {
 
   return (
     <nav
-      className="fixed bottom-0 left-0 right-0 z-40 bg-[var(--color-bg-elevated)]/95 backdrop-blur-md border-t border-[var(--color-border-primary)] pb-safe sm:hidden"
+      className="fixed bottom-0 left-0 right-0 z-40 bg-[var(--color-bg-elevated-95)] backdrop-blur-md border-t border-[var(--color-border-primary)] pb-safe sm:hidden"
       aria-label="Мобильная навигация"
     >
       <div className="flex justify-around items-center h-14">

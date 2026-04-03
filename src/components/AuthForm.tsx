@@ -130,7 +130,7 @@ export function AuthForm() {
       >
         {/* Logo */}
         <div className="text-center mb-8">
-          <div className="w-16 h-16 rounded-2xl bg-[var(--color-accent)]/10 flex items-center justify-center mx-auto mb-4">
+          <div className="w-16 h-16 rounded-2xl bg-[var(--color-accent-10)] flex items-center justify-center mx-auto mb-4">
             <Key className="w-8 h-8 text-[var(--color-accent)]" />
           </div>
           <h1 className="text-2xl font-bold text-[var(--color-text-primary)]">Трекер задач</h1>
@@ -161,7 +161,7 @@ export function AuthForm() {
               animate={{ opacity: 1, height: 'auto' }}
               exit={{ opacity: 0, height: 0 }}
               transition={transitions.smooth}
-              className="mb-4 flex items-start gap-2 p-3 rounded-xl bg-[var(--color-danger)]/10 border border-[var(--color-danger)]/20"
+              className="mb-4 flex items-start gap-2 p-3 rounded-xl bg-[var(--color-danger-10)] border border-[var(--color-danger-20)]"
             >
               <AlertCircle size={16} className="text-[var(--color-danger)] mt-0.5 flex-shrink-0" />
               <p className="text-sm text-[var(--color-danger)]">{error}</p>
@@ -223,7 +223,7 @@ export function AuthForm() {
                   </AnimatePresence>
                 </div>
 
-                <div className="flex items-start gap-2 p-3 rounded-xl bg-[var(--color-warning-light)] border border-[var(--color-warning)]/20">
+                <div className="flex items-start gap-2 p-3 rounded-xl bg-[var(--color-warning-light)] border border-[var(--color-warning-20)]">
                   <AlertCircle size={14} className="text-[var(--color-warning)] mt-0.5 flex-shrink-0" />
                   <p className="text-xs text-[var(--color-text-secondary)]">
                     <strong>Важно:</strong> Сохраните этот ключ! Он потребуется для входа.
@@ -268,7 +268,7 @@ export function AuthForm() {
                       onChange={(e) => setApiKey(e.target.value)}
                       onKeyDown={handleKeyDown}
                       placeholder="tk_..."
-                      className="w-full px-3 py-3 pl-10 border border-[var(--color-border-primary)] rounded-xl bg-[var(--color-bg-primary)] text-[var(--color-text-primary)] placeholder-[var(--color-text-tertiary)] focus:outline-none focus:ring-2 focus:ring-[var(--color-accent)]/30 focus:border-[var(--color-accent)] font-mono text-sm transition-all"
+                      className="w-full px-3 py-3 pl-10 border border-[var(--color-border-primary)] rounded-xl bg-[var(--color-bg-primary)] text-[var(--color-text-primary)] placeholder-[var(--color-text-tertiary)] focus:outline-none focus:ring-2 focus:ring-[var(--color-accent-30)] focus:border-[var(--color-accent)] font-mono text-sm transition-all"
                       disabled={loading}
                     />
                     <Key className="w-4 h-4 text-[var(--color-text-tertiary)] absolute left-3 top-1/2 -translate-y-1/2" />
@@ -309,7 +309,7 @@ export function AuthForm() {
                 transition={transitions.smooth}
                 className="space-y-5"
               >
-                <div className="flex items-start gap-2 p-3 rounded-xl bg-[var(--color-accent)]/5 border border-[var(--color-accent)]/20">
+                <div className="flex items-start gap-2 p-3 rounded-xl bg-[var(--color-accent-5)] border border-[var(--color-accent-20)]">
                   <Key size={14} className="text-[var(--color-accent)] mt-0.5 flex-shrink-0" />
                   <p className="text-xs text-[var(--color-text-secondary)]">
                     Нажмите кнопку ниже, чтобы получить уникальный API-ключ для доступа к вашим задачам.

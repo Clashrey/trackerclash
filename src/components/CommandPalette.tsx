@@ -96,10 +96,10 @@ export const CommandPalette: React.FC = () => {
                       onSelect={() => navigateTo(item.id)}
                       className={`flex items-center gap-3 px-3 py-2.5 rounded-lg cursor-pointer text-sm transition-colors
                         ${currentCategory === item.id
-                          ? 'bg-[var(--color-accent)]/10 text-[var(--color-accent)]'
+                          ? 'bg-[var(--color-accent-10)] text-[var(--color-accent)]'
                           : 'text-[var(--color-text-primary)] hover:bg-[var(--color-bg-tertiary)]'
                         }
-                        data-[selected=true]:bg-[var(--color-accent)]/10 data-[selected=true]:text-[var(--color-accent)]
+                        data-[selected=true]:bg-[var(--color-accent-10)] data-[selected=true]:text-[var(--color-accent)]
                       `}
                     >
                       <span className="flex-shrink-0">{item.icon}</span>
@@ -120,7 +120,7 @@ export const CommandPalette: React.FC = () => {
                   <Command.Item
                     value="переключить тему темный светлый режим"
                     onSelect={handleToggleDarkMode}
-                    className="flex items-center gap-3 px-3 py-2.5 rounded-lg cursor-pointer text-sm text-[var(--color-text-primary)] hover:bg-[var(--color-bg-tertiary)] data-[selected=true]:bg-[var(--color-accent)]/10 data-[selected=true]:text-[var(--color-accent)] transition-colors"
+                    className="flex items-center gap-3 px-3 py-2.5 rounded-lg cursor-pointer text-sm text-[var(--color-text-primary)] hover:bg-[var(--color-bg-tertiary)] data-[selected=true]:bg-[var(--color-accent-10)] data-[selected=true]:text-[var(--color-accent)] transition-colors"
                   >
                     {isDarkMode ? <Sun size={16} /> : <Moon size={16} />}
                     <span>{isDarkMode ? 'Светлая тема' : 'Тёмная тема'}</span>

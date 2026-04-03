@@ -91,8 +91,8 @@ export const SubtaskList: React.FC<SubtaskListProps> = ({
                 transition={transitions.smooth}
                 className={`flex items-center gap-3 p-2 rounded-lg transition-colors ${
                   subtask.completed
-                    ? 'bg-[var(--color-bg-tertiary)]/50'
-                    : 'hover:bg-[var(--color-bg-tertiary)]/30'
+                    ? 'bg-[var(--color-bg-tertiary-50)]'
+                    : 'hover:bg-[var(--color-bg-tertiary-30)]'
                 }`}
               >
                 <button
@@ -123,7 +123,7 @@ export const SubtaskList: React.FC<SubtaskListProps> = ({
                     onChange={e => setEditSubtaskTitle(e.target.value)}
                     onBlur={() => handleSubtaskEditSubmit(subtask.id, subtask.title)}
                     onKeyDown={e => handleSubtaskEditKeyDown(e, subtask.id, subtask.title)}
-                    className="flex-1 px-2 py-1 text-sm border border-[var(--color-accent)] rounded-md bg-[var(--color-bg-primary)] text-[var(--color-text-primary)] focus:outline-none focus:ring-2 focus:ring-[var(--color-accent)]/30"
+                    className="flex-1 px-2 py-1 text-sm border border-[var(--color-accent)] rounded-md bg-[var(--color-bg-primary)] text-[var(--color-text-primary)] focus:outline-none focus:ring-2 focus:ring-[var(--color-accent-30)]"
                   />
                 ) : (
                   <span
@@ -141,7 +141,7 @@ export const SubtaskList: React.FC<SubtaskListProps> = ({
 
                 <button
                   onClick={() => onDeleteSubtask?.(subtask.id)}
-                  className="p-1 rounded-md opacity-0 group-hover/subtask:opacity-100 hover:bg-[var(--color-danger)]/10 text-[var(--color-text-tertiary)] hover:text-[var(--color-danger)] transition-all"
+                  className="p-1 rounded-md opacity-0 group-hover/subtask:opacity-100 hover:bg-[var(--color-danger-10)] text-[var(--color-text-tertiary)] hover:text-[var(--color-danger)] transition-all"
                   style={{ opacity: undefined }}
                   aria-label="Удалить подзадачу"
                 >
@@ -160,7 +160,7 @@ export const SubtaskList: React.FC<SubtaskListProps> = ({
           value={newSubtaskTitle}
           onChange={e => setNewSubtaskTitle(e.target.value)}
           placeholder="Добавить подзадачу..."
-          className="flex-1 px-3 py-2 text-sm border border-[var(--color-border-primary)] rounded-lg bg-[var(--color-bg-primary)] text-[var(--color-text-primary)] placeholder-[var(--color-text-tertiary)] focus:outline-none focus:ring-2 focus:ring-[var(--color-accent)]/30 focus:border-[var(--color-accent)] transition-all"
+          className="flex-1 px-3 py-2 text-sm border border-[var(--color-border-primary)] rounded-lg bg-[var(--color-bg-primary)] text-[var(--color-text-primary)] placeholder-[var(--color-text-tertiary)] focus:outline-none focus:ring-2 focus:ring-[var(--color-accent-30)] focus:border-[var(--color-accent)] transition-all"
           disabled={isAddingSubtask}
         />
         <button

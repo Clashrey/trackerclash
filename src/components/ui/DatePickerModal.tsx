@@ -157,8 +157,8 @@ export function DatePickerModal({ isOpen, onClose, onSelect, title = 'Выбер
                         ${isToday
                           ? 'bg-[var(--color-accent)] text-white'
                           : isPast
-                            ? 'text-[var(--color-text-tertiary)]/40 cursor-not-allowed'
-                            : 'text-[var(--color-text-primary)] hover:bg-[var(--color-accent)]/10 hover:text-[var(--color-accent)]'
+                            ? 'text-[var(--color-text-tertiary-40)] cursor-not-allowed'
+                            : 'text-[var(--color-text-primary)] hover:bg-[var(--color-accent-10)] hover:text-[var(--color-accent)]'
                         }
                       `}
                     >
@@ -172,7 +172,7 @@ export function DatePickerModal({ isOpen, onClose, onSelect, title = 'Выбер
               <div className="mt-4 pt-3 border-t border-[var(--color-border-secondary)] flex gap-2">
                 <button
                   onClick={() => handleSelectDate(today.getDate())}
-                  className="flex-1 px-3 py-2 text-xs font-medium bg-[var(--color-accent)]/10 text-[var(--color-accent)] rounded-lg hover:bg-[var(--color-accent)]/20 transition-colors"
+                  className="flex-1 px-3 py-2 text-xs font-medium bg-[var(--color-accent-10)] text-[var(--color-accent)] rounded-lg hover:bg-[var(--color-accent-20)] transition-colors"
                 >
                   Сегодня
                 </button>

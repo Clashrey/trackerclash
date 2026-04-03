@@ -73,7 +73,7 @@ export const AddTaskForm: React.FC<AddTaskFormProps> = ({
           exit={{ opacity: 0 }}
           transition={transitions.smooth}
           onClick={() => setIsExpanded(true)}
-          className={`w-full flex items-center justify-center space-x-2 p-4 rounded-xl border-2 border-dashed border-[var(--color-border-primary)] hover:border-[var(--color-accent)] transition-all text-[var(--color-text-tertiary)] hover:text-[var(--color-accent)] hover:bg-[var(--color-accent)]/5 ${className}`}
+          className={`w-full flex items-center justify-center space-x-2 p-4 rounded-xl border-2 border-dashed border-[var(--color-border-primary)] hover:border-[var(--color-accent)] transition-all text-[var(--color-text-tertiary)] hover:text-[var(--color-accent)] hover:bg-[var(--color-accent-5)] ${className}`}
         >
           <Plus className="w-5 h-5" />
           <span className="text-sm sm:text-base font-medium">{placeholder}</span>
@@ -95,7 +95,7 @@ export const AddTaskForm: React.FC<AddTaskFormProps> = ({
               onChange={(e) => setTitle(e.target.value)}
               onKeyDown={handleKeyDown}
               placeholder={placeholder}
-              className="flex-1 px-4 py-3 border border-[var(--color-border-primary)] rounded-xl bg-[var(--color-bg-elevated)] text-[var(--color-text-primary)] placeholder:text-[var(--color-text-tertiary)] focus:outline-none focus:ring-2 focus:ring-[var(--color-accent)]/30 focus:border-[var(--color-accent)] transition-all"
+              className="flex-1 px-4 py-3 border border-[var(--color-border-primary)] rounded-xl bg-[var(--color-bg-elevated)] text-[var(--color-text-primary)] placeholder:text-[var(--color-text-tertiary)] focus:outline-none focus:ring-2 focus:ring-[var(--color-accent-30)] focus:border-[var(--color-accent)] transition-all"
               autoFocus
             />
             <motion.button

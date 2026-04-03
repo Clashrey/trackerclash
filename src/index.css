@@ -21,6 +21,10 @@
   --color-accent: #3b82f6;
   --color-accent-hover: #2563eb;
   --color-accent-light: #eff6ff;
+  --color-accent-5: rgba(59, 130, 246, 0.05);
+  --color-accent-10: rgba(59, 130, 246, 0.1);
+  --color-accent-20: rgba(59, 130, 246, 0.2);
+  --color-accent-30: rgba(59, 130, 246, 0.3);
 
   --color-success: #22c55e;
   --color-success-light: #f0fdf4;
@@ -28,6 +32,15 @@
   --color-warning-light: #fffbeb;
   --color-danger: #ef4444;
   --color-danger-light: #fef2f2;
+  --color-danger-10: rgba(239, 68, 68, 0.1);
+  --color-danger-20: rgba(239, 68, 68, 0.2);
+  --color-warning-20: rgba(245, 158, 11, 0.2);
+
+  --color-bg-tertiary-50: rgba(241, 245, 249, 0.5);
+  --color-bg-tertiary-30: rgba(241, 245, 249, 0.3);
+  --color-bg-elevated-80: rgba(255, 255, 255, 0.8);
+  --color-bg-elevated-95: rgba(255, 255, 255, 0.95);
+  --color-text-tertiary-40: rgba(148, 163, 184, 0.4);
 
   /* shadcn compat */
   --background: 0 0% 100%;
@@ -70,6 +83,10 @@
   --color-accent: #60a5fa;
   --color-accent-hover: #3b82f6;
   --color-accent-light: rgba(30, 58, 95, 0.5);
+  --color-accent-5: rgba(96, 165, 250, 0.05);
+  --color-accent-10: rgba(96, 165, 250, 0.1);
+  --color-accent-20: rgba(96, 165, 250, 0.2);
+  --color-accent-30: rgba(96, 165, 250, 0.3);
 
   --color-success: #4ade80;
   --color-success-light: rgba(20, 83, 45, 0.2);
@@ -77,6 +94,15 @@
   --color-warning-light: rgba(120, 53, 15, 0.2);
   --color-danger: #f87171;
   --color-danger-light: rgba(127, 29, 29, 0.2);
+  --color-danger-10: rgba(248, 113, 113, 0.1);
+  --color-danger-20: rgba(248, 113, 113, 0.2);
+  --color-warning-20: rgba(251, 191, 36, 0.2);
+
+  --color-bg-tertiary-50: rgba(51, 65, 85, 0.5);
+  --color-bg-tertiary-30: rgba(51, 65, 85, 0.3);
+  --color-bg-elevated-80: rgba(30, 41, 59, 0.8);
+  --color-bg-elevated-95: rgba(30, 41, 59, 0.95);
+  --color-text-tertiary-40: rgba(100, 116, 139, 0.4);
 
   /* shadcn compat */
   --background: 222.2 84% 4.9%;

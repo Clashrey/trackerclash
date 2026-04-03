@@ -108,7 +108,7 @@ export const RecurringView: React.FC = () => {
         )}
       </div>
 
-      <div className="flex items-start gap-3 p-4 rounded-xl bg-[var(--color-accent)]/5 border border-[var(--color-accent)]/20">
+      <div className="flex items-start gap-3 p-4 rounded-xl bg-[var(--color-accent-5)] border border-[var(--color-accent-20)]">
         <Info size={16} className="text-[var(--color-accent)] mt-0.5 flex-shrink-0" />
         <p className="text-sm text-[var(--color-text-secondary)]">
           Регулярные задачи автоматически появляются во вкладке «Сегодня» согласно расписанию.
@@ -132,7 +132,7 @@ export const RecurringView: React.FC = () => {
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, x: -16, height: 0 }}
                 transition={transitions.smooth}
-                className="group flex items-center gap-3 p-4 rounded-xl border bg-[var(--color-bg-elevated)] border-[var(--color-border-primary)] hover:border-[var(--color-accent)]/30 hover:shadow-md shadow-sm transition-all"
+                className="group flex items-center gap-3 p-4 rounded-xl border bg-[var(--color-bg-elevated)] border-[var(--color-border-primary)] hover:border-[var(--color-accent-30)] hover:shadow-md shadow-sm transition-all"
               >
                 {sortedTasks.length > 1 && (
                   <div className="flex flex-col gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
@@ -166,7 +166,7 @@ export const RecurringView: React.FC = () => {
                 <motion.button
                   whileTap={{ scale: 0.92 }}
                   onClick={() => handleDelete(task.id)}
-                  className="p-2 rounded-lg text-[var(--color-text-tertiary)] hover:text-[var(--color-danger)] hover:bg-[var(--color-danger)]/10 transition-colors"
+                  className="p-2 rounded-lg text-[var(--color-text-tertiary)] hover:text-[var(--color-danger)] hover:bg-[var(--color-danger-10)] transition-colors"
                   aria-label="Удалить регулярную задачу"
                 >
                   <X size={16} />
@@ -195,7 +195,7 @@ export const RecurringView: React.FC = () => {
                 value={newTask.title}
                 onChange={(e) => setNewTask(prev => ({ ...prev, title: e.target.value }))}
                 placeholder="Название регулярной задачи..."
-                className="w-full px-4 py-3 border border-[var(--color-border-primary)] rounded-lg bg-[var(--color-bg-primary)] text-[var(--color-text-primary)] placeholder-[var(--color-text-tertiary)] focus:outline-none focus:ring-2 focus:ring-[var(--color-accent)]/30 focus:border-[var(--color-accent)] transition-all"
+                className="w-full px-4 py-3 border border-[var(--color-border-primary)] rounded-lg bg-[var(--color-bg-primary)] text-[var(--color-text-primary)] placeholder-[var(--color-text-tertiary)] focus:outline-none focus:ring-2 focus:ring-[var(--color-accent-30)] focus:border-[var(--color-accent)] transition-all"
                 autoFocus
               />
             </div>
@@ -286,7 +286,7 @@ export const RecurringView: React.FC = () => {
             exit={{ opacity: 0 }}
             transition={transitions.smooth}
             onClick={() => setIsAdding(true)}
-            className="w-full flex items-center justify-center space-x-2 p-4 border-2 border-dashed border-[var(--color-border-primary)] rounded-xl hover:border-[var(--color-accent)] hover:bg-[var(--color-accent)]/5 transition-all text-[var(--color-text-tertiary)] hover:text-[var(--color-accent)]"
+            className="w-full flex items-center justify-center space-x-2 p-4 border-2 border-dashed border-[var(--color-border-primary)] rounded-xl hover:border-[var(--color-accent)] hover:bg-[var(--color-accent-5)] transition-all text-[var(--color-text-tertiary)] hover:text-[var(--color-accent)]"
           >
             <Plus className="w-5 h-5" />
             <span className="font-medium text-sm sm:text-base">Добавить регулярную задачу</span>

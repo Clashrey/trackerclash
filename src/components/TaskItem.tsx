@@ -104,8 +104,8 @@ export function TaskItem({
       transition={transitions.smooth}
       className={`group rounded-xl border transition-all ${
         isCompleted
-          ? 'bg-[var(--color-bg-tertiary)]/50 border-[var(--color-border-primary)]'
-          : 'bg-[var(--color-bg-elevated)] border-[var(--color-border-primary)] hover:border-[var(--color-accent)]/30 hover:shadow-md shadow-sm'
+          ? 'bg-[var(--color-bg-tertiary-50)] border-[var(--color-border-primary)]'
+          : 'bg-[var(--color-bg-elevated)] border-[var(--color-border-primary)] hover:border-[var(--color-accent-30)] hover:shadow-md shadow-sm'
       } ${isDeleting ? 'opacity-50 pointer-events-none' : ''}`}
     >
       {/* Main Task Row */}
@@ -155,7 +155,7 @@ export function TaskItem({
           className={`w-6 h-6 rounded-md border-2 flex items-center justify-center transition-all flex-shrink-0 ${
             isCompleted
               ? 'bg-[var(--color-success)] border-[var(--color-success)] text-white'
-              : 'border-[var(--color-border-primary)] hover:border-[var(--color-accent)] hover:bg-[var(--color-accent)]/5'
+              : 'border-[var(--color-border-primary)] hover:border-[var(--color-accent)] hover:bg-[var(--color-accent-5)]'
           }`}
           aria-label={isCompleted ? 'Отменить выполнение' : 'Отметить как выполненную'}
           role="checkbox"
@@ -186,7 +186,7 @@ export function TaskItem({
                 onChange={e => setEditTitle(e.target.value)}
                 onBlur={handleEditSubmit}
                 onKeyDown={handleEditKeyDown}
-                className="flex-1 px-2 py-1 text-sm font-medium border border-[var(--color-accent)] rounded-lg bg-[var(--color-bg-primary)] text-[var(--color-text-primary)] focus:outline-none focus:ring-2 focus:ring-[var(--color-accent)]/30"
+                className="flex-1 px-2 py-1 text-sm font-medium border border-[var(--color-accent)] rounded-lg bg-[var(--color-bg-primary)] text-[var(--color-text-primary)] focus:outline-none focus:ring-2 focus:ring-[var(--color-accent-30)]"
               />
             ) : (
               <span
@@ -230,7 +230,7 @@ export function TaskItem({
             <motion.button
               whileTap={{ scale: 0.92 }}
               onClick={() => onMoveToToday(task.id)}
-              className="p-2 rounded-lg text-[var(--color-text-tertiary)] hover:text-[var(--color-accent)] hover:bg-[var(--color-accent)]/10 transition-colors"
+              className="p-2 rounded-lg text-[var(--color-text-tertiary)] hover:text-[var(--color-accent)] hover:bg-[var(--color-accent-10)] transition-colors"
               aria-label="Перенести на другой день"
               title="Перенести на другой день"
             >
@@ -242,7 +242,7 @@ export function TaskItem({
             whileTap={{ scale: 0.92 }}
             onClick={handleDelete}
             disabled={isDeleting}
-            className="p-2 rounded-lg text-[var(--color-text-tertiary)] hover:text-[var(--color-danger)] hover:bg-[var(--color-danger)]/10 transition-colors disabled:opacity-50"
+            className="p-2 rounded-lg text-[var(--color-text-tertiary)] hover:text-[var(--color-danger)] hover:bg-[var(--color-danger-10)] transition-colors disabled:opacity-50"
             aria-label="Удалить задачу"
           >
             <X size={16} />

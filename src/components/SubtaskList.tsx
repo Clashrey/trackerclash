@@ -89,7 +89,7 @@ export const SubtaskList: React.FC<SubtaskListProps> = ({
                 animate={{ opacity: 1, height: 'auto' }}
                 exit={{ opacity: 0, height: 0 }}
                 transition={transitions.smooth}
-                className={`flex items-center gap-3 p-2 rounded-lg transition-colors ${
+                className={`group/subtask flex items-center gap-3 p-2 rounded-lg transition-colors ${
                   subtask.completed
                     ? 'bg-[var(--color-bg-tertiary-50)]'
                     : 'hover:bg-[var(--color-bg-tertiary-30)]'
@@ -141,8 +141,7 @@ export const SubtaskList: React.FC<SubtaskListProps> = ({
 
                 <button
                   onClick={() => onDeleteSubtask?.(subtask.id)}
-                  className="p-1 rounded-md opacity-0 group-hover/subtask:opacity-100 hover:bg-[var(--color-danger-10)] text-[var(--color-text-tertiary)] hover:text-[var(--color-danger)] transition-all"
-                  style={{ opacity: undefined }}
+                  className="p-1.5 rounded-md text-[var(--color-text-tertiary)] hover:bg-[var(--color-danger-10)] hover:text-[var(--color-danger)] transition-all flex-shrink-0"
                   aria-label="Удалить подзадачу"
                 >
                   <X size={14} />

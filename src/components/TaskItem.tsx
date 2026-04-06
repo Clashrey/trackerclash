@@ -129,7 +129,7 @@ export function TaskItem({
 
         {/* Move Buttons */}
         {showMoveButtons && (onMoveUp || onMoveDown) && (
-          <div className="flex flex-col gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
+          <div className="flex flex-col gap-0.5">
             <button
               onClick={() => onMoveUp?.(task.id)}
               disabled={isFirst}

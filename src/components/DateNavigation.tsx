@@ -3,7 +3,8 @@ import { format, addDays, subDays, isToday as isDateToday, isTomorrow } from 'da
 import { ru } from 'date-fns/locale'
 import { AnimatePresence, motion } from 'framer-motion'
 import { useAppStore, formatLocalDate } from '@/store'
-import { ChevronLeft, ChevronRight } from 'lucide-react'
+import { ChevronLeft, ChevronRight, CalendarDays } from 'lucide-react'
+import { DatePickerModal } from './ui/DatePickerModal'
 
 function getDayLabel(date: Date): string {
   if (isDateToday(date)) return 'Сегодня'
@@ -17,6 +18,7 @@ export const DateNavigation: React.FC = () => {
   const { currentDate, setCurrentDate, tasks } = useAppStore()
 
   const [windowStart, setWindowStart] = useState<Date>(() => new Date())
+  const [showDatePicker, setShowDatePicker] = useState(false)
 
   useEffect(() => {
     const currentStr = formatLocalDate(currentDate)
@@ -59,41 +61,29 @@ export const DateNavigation: React.FC = () => {
     setWindowStart(new Date())
     setCurrentDate(new Date())
   }
+  const onDatePick = (dateStr: string) => {
+    const [y, m, d] = dateStr.split('-').map(Number)
+    const picked = new Date(y, m - 1, d)
+    setWindowStart(picked)
+    setCurrentDate(picked)
+    setShowDatePicker(false)
+  }
 
   return (
     <div className="mb-4">
-      {/* Navigation row: arrows + today button */}
-      <div className="flex items-center justify-between mb-2">
+      {/* 3-day cards with arrows inline */}
+      <div className="flex items-stretch gap-1 sm:gap-1.5">
+        {/* Left arrow */}
         <button
           onClick={shiftBack}
-          className="p-1.5 rounded-lg hover:bg-[var(--color-bg-tertiary)] transition-colors text-[var(--color-text-tertiary)] hover:text-[var(--color-text-secondary)]"
+          className="flex items-center px-1 rounded-lg hover:bg-[var(--color-bg-tertiary)] transition-colors text-[var(--color-text-tertiary)] hover:text-[var(--color-text-secondary)] flex-shrink-0"
           aria-label="Предыдущие 3 дня"
         >
           <ChevronLeft className="w-4 h-4" />
         </button>
 
-        {!isWindowAtToday && (
-          <motion.button
-            initial={{ opacity: 0, scale: 0.9 }}
-            animate={{ opacity: 1, scale: 1 }}
-            onClick={goToToday}
-            className="px-2.5 py-1 text-xs font-medium rounded-md transition-colors bg-[var(--color-accent)] text-white hover:bg-[var(--color-accent-hover)]"
-          >
-            Сегодня
-          </motion.button>
-        )}
-
-        <button
-          onClick={shiftForward}
-          className="p-1.5 rounded-lg hover:bg-[var(--color-bg-tertiary)] transition-colors text-[var(--color-text-tertiary)] hover:text-[var(--color-text-secondary)]"
-          aria-label="Следующие 3 дня"
-        >
-          <ChevronRight className="w-4 h-4" />
-        </button>
-      </div>
-
-      {/* 3-day cards — compact layout */}
-      <div className="grid grid-cols-3 gap-1.5 sm:gap-2">
+        {/* Cards */}
+        <div className="grid grid-cols-3 gap-1.5 sm:gap-2 flex-1 min-w-0">
         {days.map((day, i) => {
           const isActive = day.dateStr === selectedDateStr
           const isRealToday = day.dateStr === todayStr
@@ -173,7 +163,47 @@ export const DateNavigation: React.FC = () => {
             </motion.button>
           )
         })}
+        </div>
+
+        {/* Right arrow + calendar */}
+        <div className="flex flex-col items-center justify-center gap-1 flex-shrink-0">
+          <button
+            onClick={shiftForward}
+            className="p-1 rounded-lg hover:bg-[var(--color-bg-tertiary)] transition-colors text-[var(--color-text-tertiary)] hover:text-[var(--color-text-secondary)]"
+            aria-label="Следующие 3 дня"
+          >
+            <ChevronRight className="w-4 h-4" />
+          </button>
+          <button
+            onClick={() => setShowDatePicker(true)}
+            className="p-1 rounded-lg hover:bg-[var(--color-bg-tertiary)] transition-colors text-[var(--color-text-tertiary)] hover:text-[var(--color-accent)]"
+            aria-label="Выбрать дату"
+          >
+            <CalendarDays className="w-4 h-4" />
+          </button>
+        </div>
       </div>
+
+      {/* "Сегодня" button — only when scrolled away */}
+      {!isWindowAtToday && (
+        <div className="flex justify-center mt-1.5">
+          <motion.button
+            initial={{ opacity: 0, y: -4 }}
+            animate={{ opacity: 1, y: 0 }}
+            onClick={goToToday}
+            className="px-3 py-1 text-xs font-medium rounded-md transition-colors bg-[var(--color-accent)] text-white hover:bg-[var(--color-accent-hover)]"
+          >
+            Сегодня
+          </motion.button>
+        </div>
+      )}
+
+      <DatePickerModal
+        isOpen={showDatePicker}
+        onClose={() => setShowDatePicker(false)}
+        onSelect={onDatePick}
+        title="Перейти к дате"
+      />
     </div>
   )
 }

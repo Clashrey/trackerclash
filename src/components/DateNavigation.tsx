@@ -16,11 +16,8 @@ function getDayLabel(date: Date): string {
 export const DateNavigation: React.FC = () => {
   const { currentDate, setCurrentDate, tasks } = useAppStore()
 
-  // Window anchor — the first of the 3 visible days
-  // Starts at today's date, independent of selected day
   const [windowStart, setWindowStart] = useState<Date>(() => new Date())
 
-  // When user navigates to a date outside the current window, snap the window
   useEffect(() => {
     const currentStr = formatLocalDate(currentDate)
     const startStr = formatLocalDate(windowStart)
@@ -30,7 +27,6 @@ export const DateNavigation: React.FC = () => {
     }
   }, [currentDate])
 
-  // The 3 days in the window
   const days = useMemo(() => {
     return [0, 1, 2].map(offset => {
       const date = addDays(windowStart, offset)
@@ -64,62 +60,47 @@ export const DateNavigation: React.FC = () => {
     setCurrentDate(new Date())
   }
 
-  const selectDay = (date: Date) => {
-    setCurrentDate(date)
-  }
-
   return (
     <div className="mb-6 space-y-2">
       {/* Header */}
       <div className="flex items-center justify-between px-1">
         <button
           onClick={shiftBack}
-          className="p-1.5 rounded-lg hover:bg-[var(--color-bg-tertiary)] transition-colors text-[var(--color-text-tertiary)] hover:text-[var(--color-text-secondary)]"
+          className="p-2 rounded-lg hover:bg-[var(--color-bg-tertiary)] transition-colors text-[var(--color-text-tertiary)] hover:text-[var(--color-text-secondary)]"
           aria-label="Предыдущие 3 дня"
         >
-          <ChevronLeft className="w-4 h-4" />
+          <ChevronLeft className="w-5 h-5" />
         </button>
 
-        <AnimatePresence mode="wait">
-          <motion.span
-            key={days[0].dateStr}
-            initial={{ opacity: 0, y: 3 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -3 }}
-            transition={{ duration: 0.12 }}
-            className="text-xs text-[var(--color-text-tertiary)]"
-          >
-            {format(days[0].date, 'd MMM', { locale: ru })} — {format(days[2].date, 'd MMM', { locale: ru })}
-          </motion.span>
-        </AnimatePresence>
-
-        <div className="flex items-center gap-1">
+        <div className="flex items-center gap-2">
           {!isWindowAtToday && (
             <motion.button
               initial={{ opacity: 0, scale: 0.9 }}
               animate={{ opacity: 1, scale: 1 }}
               onClick={goToToday}
-              className="px-2.5 py-1 text-[11px] font-medium rounded-lg transition-colors bg-[var(--color-accent)] text-white hover:bg-[var(--color-accent-hover)]"
+              className="px-3 py-1.5 text-xs font-medium rounded-lg transition-colors bg-[var(--color-accent)] text-white hover:bg-[var(--color-accent-hover)]"
             >
               Сегодня
             </motion.button>
           )}
-          <button
-            onClick={shiftForward}
-            className="p-1.5 rounded-lg hover:bg-[var(--color-bg-tertiary)] transition-colors text-[var(--color-text-tertiary)] hover:text-[var(--color-text-secondary)]"
-            aria-label="Следующие 3 дня"
-          >
-            <ChevronRight className="w-4 h-4" />
-          </button>
         </div>
+
+        <button
+          onClick={shiftForward}
+          className="p-2 rounded-lg hover:bg-[var(--color-bg-tertiary)] transition-colors text-[var(--color-text-tertiary)] hover:text-[var(--color-text-secondary)]"
+          aria-label="Следующие 3 дня"
+        >
+          <ChevronRight className="w-5 h-5" />
+        </button>
       </div>
 
       {/* 3-day cards */}
-      <div className="grid grid-cols-3 gap-2">
+      <div className="grid grid-cols-3 gap-2 sm:gap-3">
         {days.map((day, i) => {
           const isActive = day.dateStr === selectedDateStr
           const isRealToday = day.dateStr === todayStr
           const label = getDayLabel(day.date)
+          const shortDate = format(day.date, 'EE, d MMM', { locale: ru })
           const allDone = day.totalCount > 0 && day.completedCount === day.totalCount
 
           return (
@@ -129,63 +110,64 @@ export const DateNavigation: React.FC = () => {
               initial={{ opacity: 0, y: 6 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.15, delay: i * 0.03 }}
-              onClick={() => selectDay(day.date)}
-              className={`relative p-2.5 sm:p-3 rounded-xl border text-left transition-all min-h-[88px] ${
+              onClick={() => setCurrentDate(day.date)}
+              className={`relative p-3 sm:p-4 rounded-xl border text-left transition-all ${
                 isActive
                   ? 'bg-[var(--color-accent-10)] border-[var(--color-accent)] shadow-md'
                   : 'bg-[var(--color-bg-elevated)] border-[var(--color-border-primary)] hover:border-[var(--color-accent-20)]'
               }`}
             >
-              {/* Day label + today dot */}
-              <div className="flex items-center gap-1.5 mb-0.5">
+              {/* Day label — single line: "Сегодня, пн, 6 апр" */}
+              <div className="flex items-center gap-1.5 mb-2">
                 {isRealToday && (
-                  <span className="w-1.5 h-1.5 rounded-full bg-[var(--color-accent)] flex-shrink-0" />
+                  <span className="w-2 h-2 rounded-full bg-[var(--color-accent)] flex-shrink-0" />
                 )}
-                <span className={`text-xs font-semibold truncate ${
+                <span className={`text-sm sm:text-base font-bold truncate ${
                   isActive ? 'text-[var(--color-accent)]' : 'text-[var(--color-text-primary)]'
                 }`}>
                   {label}
                 </span>
               </div>
 
-              {/* Date */}
-              <div className="text-[10px] text-[var(--color-text-tertiary)] mb-1.5">
-                {format(day.date, 'd MMM, EE', { locale: ru })}
+              <div className="text-xs sm:text-sm text-[var(--color-text-secondary)] mb-3">
+                {shortDate}
               </div>
 
               {/* Task count */}
               {day.totalCount > 0 ? (
-                <div className={`inline-flex items-center px-1.5 py-0.5 rounded-full text-[10px] font-medium mb-1.5 ${
+                <div className={`inline-flex items-center px-2 py-1 rounded-lg text-xs font-semibold mb-2 ${
                   allDone
                     ? 'bg-[var(--color-success-light)] text-[var(--color-success)]'
-                    : 'bg-[var(--color-bg-tertiary)] text-[var(--color-text-secondary)]'
+                    : 'bg-[var(--color-bg-tertiary)] text-[var(--color-text-primary)]'
                 }`}>
                   {allDone && '✓ '}{day.completedCount}/{day.totalCount}
                 </div>
               ) : (
-                <div className="text-[10px] text-[var(--color-text-tertiary)] mb-1.5">нет задач</div>
+                <div className="text-xs text-[var(--color-text-tertiary)] mb-2">нет задач</div>
               )}
 
-              {/* Preview lines */}
-              <div className="space-y-px">
-                {day.previews.map((p, j) => (
-                  <div
-                    key={j}
-                    className={`text-[10px] leading-snug truncate ${
-                      p.completed
-                        ? 'text-[var(--color-text-tertiary)] line-through'
-                        : 'text-[var(--color-text-secondary)]'
-                    }`}
-                  >
-                    {p.title}
-                  </div>
-                ))}
-                {day.totalCount > 2 && (
-                  <div className="text-[10px] text-[var(--color-text-tertiary)]">
-                    +{day.totalCount - 2} ещё
-                  </div>
-                )}
-              </div>
+              {/* Task previews — readable size */}
+              {day.previews.length > 0 && (
+                <div className="space-y-1 mt-1">
+                  {day.previews.map((p, j) => (
+                    <div
+                      key={j}
+                      className={`text-xs sm:text-sm leading-snug truncate ${
+                        p.completed
+                          ? 'text-[var(--color-text-tertiary)] line-through'
+                          : 'text-[var(--color-text-secondary)]'
+                      }`}
+                    >
+                      {p.title}
+                    </div>
+                  ))}
+                  {day.totalCount > 2 && (
+                    <div className="text-xs text-[var(--color-text-tertiary)]">
+                      +{day.totalCount - 2} ещё
+                    </div>
+                  )}
+                </div>
+              )}
             </motion.button>
           )
         })}

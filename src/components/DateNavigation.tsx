@@ -14,7 +14,7 @@ function getDayLabel(date: Date): string {
 }
 
 export const DateNavigation: React.FC = () => {
-  const { currentDate, setCurrentDate, tasks, recurringTasks, taskCompletions } = useAppStore()
+  const { currentDate, setCurrentDate, tasks } = useAppStore()
 
   // Window anchor — the first of the 3 visible days
   // Starts at today's date, independent of selected day
@@ -36,34 +36,21 @@ export const DateNavigation: React.FC = () => {
       const date = addDays(windowStart, offset)
       const dateStr = formatLocalDate(date)
 
-      const dayTasks = tasks.filter(t => t.category === 'today' && t.date === dateStr)
+      const dayTasks = tasks
+        .filter(t => t.category === 'today' && t.date === dateStr)
+        .sort((a, b) => a.order_index - b.order_index)
 
-      const dayOfWeek = date.getDay()
-      const dayRecurring = recurringTasks.filter(rt => {
-        if (rt.frequency === 'daily') return true
-        if (rt.frequency === 'weekly' && rt.days_of_week) {
-          return rt.days_of_week.includes(dayOfWeek)
-        }
-        return false
-      })
+      const totalCount = dayTasks.length
+      const completedCount = dayTasks.filter(t => t.completed).length
 
-      const totalCount = dayTasks.length + dayRecurring.length
-      const completedCount = dayTasks.filter(t => t.completed).length +
-        dayRecurring.filter(rt =>
-          taskCompletions.some(tc => tc.recurring_task_id === rt.id && tc.date === dateStr)
-        ).length
-
-      const previews = [
-        ...dayTasks.slice(0, 3).map(t => ({ title: t.title, completed: t.completed })),
-        ...dayRecurring.slice(0, Math.max(0, 3 - dayTasks.length)).map(rt => ({
-          title: rt.title,
-          completed: taskCompletions.some(tc => tc.recurring_task_id === rt.id && tc.date === dateStr)
-        }))
-      ].slice(0, 3)
+      const previews = dayTasks.slice(0, 2).map(t => ({
+        title: t.title,
+        completed: t.completed,
+      }))
 
       return { date, dateStr, totalCount, completedCount, previews }
     })
-  }, [windowStart, tasks, recurringTasks, taskCompletions])
+  }, [windowStart, tasks])
 
   const selectedDateStr = formatLocalDate(currentDate)
   const todayStr = formatLocalDate(new Date())
@@ -193,9 +180,9 @@ export const DateNavigation: React.FC = () => {
                     {p.title}
                   </div>
                 ))}
-                {day.totalCount > 3 && (
+                {day.totalCount > 2 && (
                   <div className="text-[10px] text-[var(--color-text-tertiary)]">
-                    +{day.totalCount - 3} ещё
+                    +{day.totalCount - 2} ещё
                   </div>
                 )}
               </div>

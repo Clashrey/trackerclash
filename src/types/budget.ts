@@ -54,6 +54,7 @@ export interface Transaction {
   type: TransactionType
   description: string | null
   date: string // YYYY-MM-DD
+  recurring_expense_id: string | null
   created_at: string
   updated_at: string
   // Joined fields (optional, for display)
@@ -96,6 +97,9 @@ export interface Account {
 /**
  * Фиксированный обязательный расход (подписка, аренда и т.д.)
  */
+// bill = напоминание + ручная оплата, subscription = автосписание
+export type RecurringExpenseType = 'bill' | 'subscription'
+
 export interface RecurringExpense {
   id: string
   couple_id: string
@@ -105,6 +109,7 @@ export interface RecurringExpense {
   amount: number
   currency: Currency
   day_of_month: number // 1-31
+  type: RecurringExpenseType
   category_id: string | null
   is_active: boolean
   created_at: string

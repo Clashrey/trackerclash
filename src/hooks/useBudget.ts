@@ -2,7 +2,7 @@ import { useCallback } from 'react'
 import { toast } from 'sonner'
 import { useAppStore } from '../store'
 import { budgetDatabaseService } from '../lib/budget-database'
-import type { Currency, TransactionType, BudgetContext } from '../types/budget'
+import type { Currency, TransactionType, RecurringExpenseType, BudgetContext } from '../types/budget'
 
 const CURRENCY_SYMBOLS: Record<Currency, string> = {
   THB: '฿',
@@ -409,6 +409,7 @@ export function useBudget() {
     amount: number
     currency: Currency
     day_of_month: number
+    type?: RecurringExpenseType
     category_id?: string | null
   }) => {
     const { couple, recurringExpenses } = getState()
@@ -448,6 +449,28 @@ export function useBudget() {
       throw error
     }
   }, [setRecurringExpenses])
+
+  const markExpensePaid = useCallback(async (expenseId: string) => {
+    const { couple, recurringExpenses, budgetContext } = getState()
+    if (!couple) return null
+
+    const expense = recurringExpenses.find(e => e.id === expenseId)
+    if (!expense) return null
+
+    try {
+      const txn = await budgetDatabaseService.markExpensePaid(expense, couple.id, budgetContext)
+      if (txn) {
+        const currentTransactions = getState().transactions
+        setTransactions([txn, ...currentTransactions])
+        toast.success(`${expense.emoji} ${expense.name} — оплачено`)
+      }
+      return txn
+    } catch (error) {
+      console.error('markExpensePaid failed:', error)
+      toast.error('Не удалось отметить оплату')
+      throw error
+    }
+  }, [setTransactions])
 
   const deleteRecurringExpense = useCallback(async (id: string) => {
     try {
@@ -502,6 +525,7 @@ export function useBudget() {
     addRecurringExpense,
     updateRecurringExpense,
     deleteRecurringExpense,
+    markExpensePaid,
     formatAmount,
   }
 }

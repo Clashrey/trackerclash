@@ -7,6 +7,7 @@ import type {
   BudgetLimit,
   Account,
   RecurringExpense,
+  RecurringExpenseType,
   BudgetContext,
   Currency,
   TransactionType,
@@ -513,7 +514,7 @@ class BudgetDatabaseService {
 
   async addRecurringExpense(
     coupleId: string,
-    params: { name: string; emoji: string; amount: number; currency: Currency; day_of_month: number; category_id?: string | null }
+    params: { name: string; emoji: string; amount: number; currency: Currency; day_of_month: number; type?: RecurringExpenseType; category_id?: string | null }
   ): Promise<RecurringExpense | null> {
     const userId = this.getCurrentUserId()
     if (!userId) return null
@@ -550,6 +551,76 @@ class BudgetDatabaseService {
     } catch (error) {
       console.error('updateRecurringExpense error:', error)
       throw error
+    }
+  }
+
+  async markExpensePaid(
+    expense: RecurringExpense,
+    coupleId: string,
+    context: BudgetContext
+  ): Promise<Transaction | null> {
+    const userId = this.getCurrentUserId()
+    if (!userId) return null
+
+    const today = new Date()
+    const date = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`
+
+    try {
+      const { data, error } = await supabase
+        .from('transactions')
+        .insert([{
+          couple_id: coupleId,
+          user_id: userId,
+          category_id: expense.category_id,
+          amount: expense.amount,
+          currency: expense.currency,
+          context,
+          type: 'shared' as TransactionType,
+          description: expense.name,
+          date,
+          recurring_expense_id: expense.id,
+        }])
+        .select('*, category:budget_categories(*)')
+        .single()
+
+      if (error) throw new Error(`markExpensePaid failed: ${error.message}`)
+      return data
+    } catch (error) {
+      console.error('markExpensePaid error:', error)
+      throw error
+    }
+  }
+
+  async getExpensePaymentsForMonth(
+    coupleId: string,
+    month: string
+  ): Promise<Record<string, boolean>> {
+    const startDate = `${month}-01`
+    const [year, m] = month.split('-').map(Number)
+    const lastDay = new Date(year, m, 0).getDate()
+    const endDate = `${month}-${String(lastDay).padStart(2, '0')}`
+
+    try {
+      const { data, error } = await supabase
+        .from('transactions')
+        .select('recurring_expense_id')
+        .eq('couple_id', coupleId)
+        .not('recurring_expense_id', 'is', null)
+        .gte('date', startDate)
+        .lte('date', endDate)
+
+      if (error) throw new Error(`getExpensePayments failed: ${error.message}`)
+
+      const paid: Record<string, boolean> = {}
+      for (const row of data || []) {
+        if (row.recurring_expense_id) {
+          paid[row.recurring_expense_id] = true
+        }
+      }
+      return paid
+    } catch (error) {
+      console.error('getExpensePayments error:', error)
+      return {}
     }
   }
 

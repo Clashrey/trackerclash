@@ -335,13 +335,17 @@ class BudgetDatabaseService {
     if (!userId) return false
 
     try {
-      const { error } = await supabase
+      const { data, error } = await supabase
         .from('transactions')
         .delete()
         .eq('id', id)
-        .eq('user_id', userId)
+        .select()
 
       if (error) throw new Error(`deleteTransaction failed: ${error.message}`)
+      if (!data || data.length === 0) {
+        console.warn('deleteTransaction: 0 rows deleted, id=', id)
+        return false
+      }
       return true
     } catch (error) {
       console.error('deleteTransaction error:', error)

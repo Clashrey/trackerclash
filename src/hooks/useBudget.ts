@@ -217,14 +217,18 @@ export function useBudget() {
         const currentTransactions = getState().transactions
         setTransactions(currentTransactions.filter(t => t.id !== id))
         toast('Транзакция удалена')
+      } else {
+        toast.error('Не удалось удалить — нет доступа к транзакции')
+        await reloadTransactions()
       }
       return success
     } catch (error) {
-
+      console.error('deleteTransaction failed:', error)
       toast.error('Не удалось удалить транзакцию')
+      await reloadTransactions()
       throw error
     }
-  }, [setTransactions])
+  }, [setTransactions, reloadTransactions])
 
   // ─── Categories ───────────────────────────────────────
 

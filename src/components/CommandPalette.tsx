@@ -3,7 +3,9 @@ import { Command } from 'cmdk'
 import { AnimatePresence, motion } from 'framer-motion'
 import {
   CalendarDays, ListTodo, Lightbulb, Repeat, BarChart3,
-  Search, Plus, Moon, Sun, ArrowRight
+  Search, Moon, Sun,
+  LayoutDashboard, Receipt, PieChart, Settings,
+  Wallet,
 } from 'lucide-react'
 import { useAppStore } from '@/store'
 import { TaskCategory } from '@/types'
@@ -11,7 +13,7 @@ import { transitions } from '@/lib/animations'
 
 export const CommandPalette: React.FC = () => {
   const [open, setOpen] = useState(false)
-  const { setCurrentCategory, currentCategory, isDarkMode, toggleDarkMode } = useAppStore()
+  const { setCurrentCategory, currentCategory, isDarkMode, toggleDarkMode, appMode, setAppMode } = useAppStore()
 
   // Toggle with Cmd+K / Ctrl+K
   useEffect(() => {
@@ -38,12 +40,24 @@ export const CommandPalette: React.FC = () => {
     setOpen(false)
   }, [toggleDarkMode])
 
-  const navigationItems: { id: TaskCategory; label: string; icon: React.ReactNode; shortcut?: string }[] = [
+  const handleSwitchMode = useCallback(() => {
+    setAppMode(appMode === 'budget' ? 'tracker' : 'budget')
+    setOpen(false)
+  }, [appMode, setAppMode])
+
+  const trackerItems: { id: TaskCategory; label: string; icon: React.ReactNode; shortcut?: string }[] = [
     { id: 'today', label: 'Сегодня', icon: <CalendarDays size={16} />, shortcut: '1' },
     { id: 'tasks', label: 'Задачи', icon: <ListTodo size={16} />, shortcut: '2' },
     { id: 'ideas', label: 'Идеи', icon: <Lightbulb size={16} />, shortcut: '3' },
     { id: 'recurring', label: 'Регулярные', icon: <Repeat size={16} />, shortcut: '4' },
     { id: 'analytics', label: 'Аналитика', icon: <BarChart3 size={16} />, shortcut: '5' },
+  ]
+
+  const budgetItems: { id: TaskCategory; label: string; icon: React.ReactNode; shortcut?: string }[] = [
+    { id: 'budget_overview', label: 'Обзор бюджета', icon: <LayoutDashboard size={16} />, shortcut: '6' },
+    { id: 'budget_transactions', label: 'Транзакции', icon: <Receipt size={16} />, shortcut: '7' },
+    { id: 'budget_analytics', label: 'Аналитика бюджета', icon: <PieChart size={16} />, shortcut: '8' },
+    { id: 'budget_settings', label: 'Настройки бюджета', icon: <Settings size={16} />, shortcut: '9' },
   ]
 
   return (
@@ -85,15 +99,43 @@ export const CommandPalette: React.FC = () => {
                   Ничего не найдено
                 </Command.Empty>
 
-                <Command.Group heading="Навигация" className="mb-2">
+                <Command.Group heading="Трекер" className="mb-2">
                   <p className="px-2 py-1.5 text-xs font-semibold text-[var(--color-text-tertiary)] uppercase tracking-wider">
-                    Навигация
+                    Трекер
                   </p>
-                  {navigationItems.map(item => (
+                  {trackerItems.map(item => (
                     <Command.Item
                       key={item.id}
-                      value={`перейти к ${item.label}`}
-                      onSelect={() => navigateTo(item.id)}
+                      value={`перейти к ${item.label} трекер`}
+                      onSelect={() => { if (appMode !== 'tracker') setAppMode('tracker'); navigateTo(item.id) }}
+                      className={`flex items-center gap-3 px-3 py-2.5 rounded-lg cursor-pointer text-sm transition-colors
+                        ${currentCategory === item.id
+                          ? 'bg-[var(--color-accent-10)] text-[var(--color-accent)]'
+                          : 'text-[var(--color-text-primary)] hover:bg-[var(--color-bg-tertiary)]'
+                        }
+                        data-[selected=true]:bg-[var(--color-accent-10)] data-[selected=true]:text-[var(--color-accent)]
+                      `}
+                    >
+                      <span className="flex-shrink-0">{item.icon}</span>
+                      <span className="flex-1">{item.label}</span>
+                      {item.shortcut && (
+                        <kbd className="ml-auto text-[10px] font-mono px-1.5 py-0.5 rounded bg-[var(--color-bg-tertiary)] text-[var(--color-text-tertiary)] border border-[var(--color-border-secondary)]">
+                          {item.shortcut}
+                        </kbd>
+                      )}
+                    </Command.Item>
+                  ))}
+                </Command.Group>
+
+                <Command.Group heading="Бюджет" className="mb-2">
+                  <p className="px-2 py-1.5 text-xs font-semibold text-[var(--color-text-tertiary)] uppercase tracking-wider">
+                    Бюджет
+                  </p>
+                  {budgetItems.map(item => (
+                    <Command.Item
+                      key={item.id}
+                      value={`перейти к ${item.label} бюджет`}
+                      onSelect={() => { if (appMode !== 'budget') setAppMode('budget'); navigateTo(item.id) }}
                       className={`flex items-center gap-3 px-3 py-2.5 rounded-lg cursor-pointer text-sm transition-colors
                         ${currentCategory === item.id
                           ? 'bg-[var(--color-accent-10)] text-[var(--color-accent)]'
@@ -117,6 +159,14 @@ export const CommandPalette: React.FC = () => {
                   <p className="px-2 py-1.5 text-xs font-semibold text-[var(--color-text-tertiary)] uppercase tracking-wider">
                     Действия
                   </p>
+                  <Command.Item
+                    value="переключить режим трекер бюджет"
+                    onSelect={handleSwitchMode}
+                    className="flex items-center gap-3 px-3 py-2.5 rounded-lg cursor-pointer text-sm text-[var(--color-text-primary)] hover:bg-[var(--color-bg-tertiary)] data-[selected=true]:bg-[var(--color-accent-10)] data-[selected=true]:text-[var(--color-accent)] transition-colors"
+                  >
+                    <Wallet size={16} />
+                    <span>{appMode === 'budget' ? 'Перейти в трекер' : 'Перейти в бюджет'}</span>
+                  </Command.Item>
                   <Command.Item
                     value="переключить тему темный светлый режим"
                     onSelect={handleToggleDarkMode}

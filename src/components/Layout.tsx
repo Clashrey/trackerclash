@@ -11,9 +11,27 @@ import { LoadingSpinner } from '@/components/ui/LoadingSpinner'
 import { variants, transitions } from '@/lib/animations'
 import { useKeyboardShortcuts } from '@/hooks/useKeyboardShortcuts'
 
-// Lazy load AnalyticsView (heavier component with calculations)
+// Lazy load heavy views
 const AnalyticsView = lazy(() =>
   import('@/components/views/AnalyticsView').then(m => ({ default: m.AnalyticsView }))
+)
+const BudgetOverviewView = lazy(() =>
+  import('@/components/views/BudgetOverviewView').then(m => ({ default: m.BudgetOverviewView }))
+)
+const BudgetTransactionsView = lazy(() =>
+  import('@/components/views/BudgetTransactionsView').then(m => ({ default: m.BudgetTransactionsView }))
+)
+const BudgetAnalyticsView = lazy(() =>
+  import('@/components/views/BudgetAnalyticsView').then(m => ({ default: m.BudgetAnalyticsView }))
+)
+const BudgetSettingsView = lazy(() =>
+  import('@/components/views/BudgetSettingsView').then(m => ({ default: m.BudgetSettingsView }))
+)
+
+const SuspenseFallback = (
+  <div className="flex items-center justify-center py-20">
+    <LoadingSpinner size="lg" />
+  </div>
 )
 
 export const Layout: React.FC = () => {
@@ -31,15 +49,15 @@ export const Layout: React.FC = () => {
       case 'recurring':
         return <RecurringView />
       case 'analytics':
-        return (
-          <Suspense fallback={
-            <div className="flex items-center justify-center py-20">
-              <LoadingSpinner size="lg" />
-            </div>
-          }>
-            <AnalyticsView />
-          </Suspense>
-        )
+        return <Suspense fallback={SuspenseFallback}><AnalyticsView /></Suspense>
+      case 'budget_overview':
+        return <Suspense fallback={SuspenseFallback}><BudgetOverviewView /></Suspense>
+      case 'budget_transactions':
+        return <Suspense fallback={SuspenseFallback}><BudgetTransactionsView /></Suspense>
+      case 'budget_analytics':
+        return <Suspense fallback={SuspenseFallback}><BudgetAnalyticsView /></Suspense>
+      case 'budget_settings':
+        return <Suspense fallback={SuspenseFallback}><BudgetSettingsView /></Suspense>
       default:
         return <TodayView />
     }

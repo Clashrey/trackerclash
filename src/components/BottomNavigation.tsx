@@ -1,6 +1,9 @@
 import React from 'react'
 import { motion } from 'framer-motion'
-import { CalendarDays, ListTodo, Lightbulb, Repeat, BarChart3 } from 'lucide-react'
+import {
+  CalendarDays, ListTodo, Lightbulb, Repeat, BarChart3,
+  LayoutDashboard, Receipt, PieChart, Settings,
+} from 'lucide-react'
 import { useAppStore } from '@/store'
 import { TaskCategory } from '@/types'
 
@@ -10,7 +13,7 @@ interface NavItem {
   label: string
 }
 
-const items: NavItem[] = [
+const trackerItems: NavItem[] = [
   { id: 'today', icon: CalendarDays, label: 'Сегодня' },
   { id: 'tasks', icon: ListTodo, label: 'Задачи' },
   { id: 'ideas', icon: Lightbulb, label: 'Идеи' },
@@ -18,8 +21,17 @@ const items: NavItem[] = [
   { id: 'analytics', icon: BarChart3, label: 'Аналитика' },
 ]
 
+const budgetItems: NavItem[] = [
+  { id: 'budget_overview', icon: LayoutDashboard, label: 'Обзор' },
+  { id: 'budget_transactions', icon: Receipt, label: 'Транзакции' },
+  { id: 'budget_analytics', icon: PieChart, label: 'Аналитика' },
+  { id: 'budget_settings', icon: Settings, label: 'Настройки' },
+]
+
 export const BottomNavigation: React.FC = () => {
-  const { currentCategory, setCurrentCategory } = useAppStore()
+  const { currentCategory, setCurrentCategory, appMode } = useAppStore()
+
+  const items = appMode === 'budget' ? budgetItems : trackerItems
 
   return (
     <nav

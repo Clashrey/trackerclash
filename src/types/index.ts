@@ -39,4 +39,5 @@ export interface User {
 }
 
 export type TaskCategory = 'today' | 'tasks' | 'ideas' | 'recurring' | 'analytics'
+  | 'budget_overview' | 'budget_transactions' | 'budget_analytics' | 'budget_settings'
 

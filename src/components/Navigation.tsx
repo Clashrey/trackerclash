@@ -3,28 +3,49 @@ import { motion } from 'framer-motion'
 import { Moon, Sun, LogOut, Search } from 'lucide-react'
 import { useAuth } from '../hooks/useAuth'
 import { useAppStore } from '../store'
+import { ModeSwitcher } from './ModeSwitcher'
+import { TaskCategory } from '@/types'
 
 export function Navigation() {
   const { user, signOut } = useAuth()
-  const { currentCategory, setCurrentCategory, tasks, recurringTasks, selectedDate, isDarkMode, toggleDarkMode } = useAppStore()
+  const {
+    currentCategory, setCurrentCategory,
+    tasks, recurringTasks, selectedDate,
+    isDarkMode, toggleDarkMode,
+    appMode,
+  } = useAppStore()
 
   const todayTasksCount = tasks.filter(t => t.category === 'today' && t.date === selectedDate).length
 
-  const categories = [
+  const trackerCategories: { id: TaskCategory; label: string; count: number }[] = [
     { id: 'today', label: 'Сегодня', count: todayTasksCount },
     { id: 'tasks', label: 'Задачи', count: tasks.filter(t => t.category === 'tasks').length },
     { id: 'ideas', label: 'Идеи', count: tasks.filter(t => t.category === 'ideas').length },
     { id: 'recurring', label: 'Регулярные', count: recurringTasks.length },
-    { id: 'analytics', label: 'Аналитика', count: 0 }
+    { id: 'analytics', label: 'Аналитика', count: 0 },
   ]
+
+  const budgetCategories: { id: TaskCategory; label: string; count: number }[] = [
+    { id: 'budget_overview', label: 'Обзор', count: 0 },
+    { id: 'budget_transactions', label: 'Транзакции', count: 0 },
+    { id: 'budget_analytics', label: 'Аналитика', count: 0 },
+    { id: 'budget_settings', label: 'Настройки', count: 0 },
+  ]
+
+  const categories = appMode === 'budget' ? budgetCategories : trackerCategories
 
   return (
     <div className="space-y-4">
       {/* Header */}
       <div className="flex justify-between items-center">
-        <div className="flex items-center space-x-2">
-          <span className="text-2xl" aria-hidden="true">📋</span>
-          <h1 className="text-xl font-semibold text-[var(--color-text-primary)]">Трекер задач</h1>
+        <div className="flex items-center gap-3">
+          <div className="flex items-center space-x-2">
+            <span className="text-2xl" aria-hidden="true">{appMode === 'budget' ? '💰' : '📋'}</span>
+            <h1 className="text-xl font-semibold text-[var(--color-text-primary)]">
+              {appMode === 'budget' ? 'Бюджет' : 'Трекер задач'}
+            </h1>
+          </div>
+          <ModeSwitcher />
         </div>
         <div className="flex items-center space-x-2">
           {/* Cmd+K search hint */}
@@ -64,7 +85,7 @@ export function Navigation() {
       <nav aria-label="Основная навигация" className="hidden sm:block">
         <div
           role="tablist"
-          aria-label="Разделы трекера"
+          aria-label={appMode === 'budget' ? 'Разделы бюджета' : 'Разделы трекера'}
           className="flex gap-1 overflow-x-auto scrollbar-hide border-b border-[var(--color-border-primary)] pb-px"
         >
           {categories.map((category) => {
@@ -75,7 +96,7 @@ export function Navigation() {
                 role="tab"
                 aria-selected={isActive}
                 aria-controls={`panel-${category.id}`}
-                onClick={() => setCurrentCategory(category.id as any)}
+                onClick={() => setCurrentCategory(category.id)}
                 className={`relative px-4 py-2.5 text-sm font-medium whitespace-nowrap transition-colors ${
                   isActive
                     ? 'text-[var(--color-accent)]'

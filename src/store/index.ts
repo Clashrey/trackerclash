@@ -1,5 +1,6 @@
 import { create } from 'zustand'
 import { Task, RecurringTask, TaskCategory, Subtask } from '@/types'
+import type { AppMode, BudgetContext, Couple, BudgetCategory, Transaction, BudgetLimit, ExchangeRate } from '@/types/budget'
 
 interface TaskCompletion {
   id: string
@@ -59,6 +60,24 @@ interface AppState {
   // Loading states
   isLoading: boolean
   setIsLoading: (loading: boolean) => void
+
+  // Budget
+  appMode: AppMode
+  setAppMode: (mode: AppMode) => void
+  budgetContext: BudgetContext
+  setBudgetContext: (ctx: BudgetContext) => void
+  couple: Couple | null
+  setCouple: (couple: Couple | null) => void
+  budgetCategories: BudgetCategory[]
+  setBudgetCategories: (cats: BudgetCategory[]) => void
+  transactions: Transaction[]
+  setTransactions: (txns: Transaction[]) => void
+  budgetLimits: BudgetLimit[]
+  setBudgetLimits: (limits: BudgetLimit[]) => void
+  exchangeRates: ExchangeRate[]
+  setExchangeRates: (rates: ExchangeRate[]) => void
+  budgetSelectedMonth: string
+  setBudgetSelectedMonth: (month: string) => void
 }
 
 export const useAppStore = create<AppState>((set, get) => ({
@@ -117,6 +136,36 @@ export const useAppStore = create<AppState>((set, get) => ({
   // Loading states
   isLoading: false,
   setIsLoading: (loading) => set({ isLoading: loading }),
+
+  // Budget
+  appMode: 'tracker',
+  setAppMode: (mode) => {
+    if (mode === 'budget') {
+      set({ appMode: mode, currentCategory: 'budget_overview' })
+    } else {
+      set({ appMode: mode, currentCategory: 'today' })
+    }
+  },
+  budgetContext: (localStorage.getItem('budget_context') as BudgetContext) || 'personal',
+  setBudgetContext: (ctx) => {
+    localStorage.setItem('budget_context', ctx)
+    set({ budgetContext: ctx })
+  },
+  couple: null,
+  setCouple: (couple) => set({ couple }),
+  budgetCategories: [],
+  setBudgetCategories: (cats) => set({ budgetCategories: cats }),
+  transactions: [],
+  setTransactions: (txns) => set({ transactions: txns }),
+  budgetLimits: [],
+  setBudgetLimits: (limits) => set({ budgetLimits: limits }),
+  exchangeRates: [],
+  setExchangeRates: (rates) => set({ exchangeRates: rates }),
+  budgetSelectedMonth: (() => {
+    const now = new Date()
+    return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`
+  })(),
+  setBudgetSelectedMonth: (month) => set({ budgetSelectedMonth: month }),
 }))
 
 export type { TaskCompletion }

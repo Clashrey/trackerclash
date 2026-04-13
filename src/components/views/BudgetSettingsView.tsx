@@ -193,7 +193,7 @@ export const BudgetSettingsView: React.FC = () => {
               </div>
             )}
             {couple.user2_id && (
-              <p className="text-xs text-[var(--color-text-tertiary)]">Партнёр подключен</p>
+              <p className="text-xs text-[var(--color-text-tertiary)]">{couple.user2_name || 'Партнёр'} подключен(а)</p>
             )}
           </div>
         )}

@@ -238,6 +238,10 @@ export const BudgetAnalyticsView: React.FC = () => {
     return { myTotal, partnerTotal, grandTotal, myPct, partnerPct, topDiff }
   }, [transactions, budgetContext, couple, userId, budgetCategories])
 
+  // User names
+  const myName = couple ? (userId === couple.user1_id ? couple.user1_name : couple.user2_name) || 'Я' : 'Я'
+  const partnerName = couple ? (userId === couple.user1_id ? couple.user2_name : couple.user1_name) || 'Партнёр' : 'Партнёр'
+
   // ─── Guards ─────────────────────────────────────────
 
   if (!couple) {
@@ -569,11 +573,11 @@ export const BudgetAnalyticsView: React.FC = () => {
               <div className="flex justify-between text-sm mb-3">
                 <span className="text-[var(--color-text-primary)]">
                   <span className="inline-block w-2 h-2 rounded-full bg-[#4ECDC4] mr-1.5" />
-                  Я: {formatAmount(userSplit.myTotal, defaultCurrency)} ({userSplit.myPct}%)
+                  {myName}: {formatAmount(userSplit.myTotal, defaultCurrency)} ({userSplit.myPct}%)
                 </span>
                 <span className="text-[var(--color-text-primary)]">
                   <span className="inline-block w-2 h-2 rounded-full bg-[#FF6B6B] mr-1.5" />
-                  Партнёр: {formatAmount(userSplit.partnerTotal, defaultCurrency)} ({userSplit.partnerPct}%)
+                  {partnerName}: {formatAmount(userSplit.partnerTotal, defaultCurrency)} ({userSplit.partnerPct}%)
                 </span>
               </div>
 
@@ -586,7 +590,7 @@ export const BudgetAnalyticsView: React.FC = () => {
                       <span className="text-sm">{d.cat.emoji}</span>
                       <span className="truncate">{d.cat.name}</span>
                       <span className="flex-shrink-0 ml-auto">
-                        я: {formatAmount(d.my, defaultCurrency)}, партнёр: {formatAmount(d.partner, defaultCurrency)}
+                        {myName}: {formatAmount(d.my, defaultCurrency)}, {partnerName}: {formatAmount(d.partner, defaultCurrency)}
                       </span>
                     </div>
                   ))}

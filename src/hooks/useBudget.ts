@@ -412,6 +412,7 @@ export function useBudget() {
     type?: RecurringExpenseType
     context?: BudgetContext
     category_id?: string | null
+    user_id?: string
   }) => {
     const { couple, recurringExpenses } = getState()
     if (!couple) return null

@@ -515,15 +515,18 @@ class BudgetDatabaseService {
 
   async addRecurringExpense(
     coupleId: string,
-    params: { name: string; emoji: string; amount: number; currency: Currency; day_of_month: number; type?: RecurringExpenseType; context?: BudgetContext; category_id?: string | null }
+    params: { name: string; emoji: string; amount: number; currency: Currency; day_of_month: number; type?: RecurringExpenseType; context?: BudgetContext; category_id?: string | null; user_id?: string }
   ): Promise<RecurringExpense | null> {
-    const userId = this.getCurrentUserId()
-    if (!userId) return null
+    const currentUserId = this.getCurrentUserId()
+    if (!currentUserId) return null
+
+    const userId = params.user_id || currentUserId
 
     try {
+      const { user_id: _, ...rest } = params
       const { data, error } = await supabase
         .from('recurring_expenses')
-        .insert([{ couple_id: coupleId, user_id: userId, ...params }])
+        .insert([{ couple_id: coupleId, user_id: userId, ...rest }])
         .select()
         .single()
 

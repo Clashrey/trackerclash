@@ -42,6 +42,23 @@ function getCurrentMonth(): string {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`
 }
 
+function formatRelativeTime(date: Date): string {
+  const now = new Date()
+  const diffMs = now.getTime() - date.getTime()
+  const diffMins = Math.floor(diffMs / 60000)
+  const diffHours = Math.floor(diffMs / 3600000)
+  const diffDays = Math.floor(diffMs / 86400000)
+
+  if (diffMins < 1) return 'только что'
+  if (diffMins < 60) return `${diffMins} мин назад`
+  if (diffHours < 24) {
+    return `сегодня в ${date.toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' })}`
+  }
+  if (diffDays === 1) return 'вчера'
+  if (diffDays < 7) return `${pluralDays(diffDays)} назад`
+  return date.toLocaleDateString('ru-RU', { day: 'numeric', month: 'long' })
+}
+
 const ACCOUNT_EMOJIS = ['🏦', '💳', '💰', '🪙', '📱', '🏧', '💵', '🐖', '🔐', '🏠']
 const EXPENSE_EMOJIS = ['📅', '🔄', '🏠', '🏍️', '📱', '💡', '🎬', '🏋️', '☁️', '🎵', '📦', '🛡️']
 
@@ -121,6 +138,7 @@ export const BudgetOverviewView: React.FC = () => {
   const [expDay, setExpDay] = useState('')
   const [expType, setExpType] = useState<RecurringExpenseType>('bill')
   const [expCategoryId, setExpCategoryId] = useState<string | null>(null)
+  const [expOwnerId, setExpOwnerId] = useState<string | null>(null) // null = current user
   const [editingExpenseId, setEditingExpenseId] = useState<string | null>(null)
   const [editExpAmount, setEditExpAmount] = useState('')
 
@@ -179,9 +197,32 @@ export const BudgetOverviewView: React.FC = () => {
 
   const myAccounts = useMemo(() => accounts.filter(a => a.user_id === userId), [accounts, userId])
   const partnerAccounts = useMemo(() => accounts.filter(a => a.user_id !== userId), [accounts, userId])
-  const myBalance = useMemo(() => myAccounts.reduce((sum, a) => sum + Number(a.balance), 0), [myAccounts])
-  const partnerBalance = useMemo(() => partnerAccounts.reduce((sum, a) => sum + Number(a.balance), 0), [partnerAccounts])
-  const totalBalance = myBalance + partnerBalance
+
+  // Multi-currency balance
+  const balanceByCurrency = useMemo(() => {
+    const allAccounts = [...myAccounts, ...partnerAccounts]
+    const groups: Partial<Record<Currency, number>> = {}
+    for (const acc of allAccounts) {
+      groups[acc.currency] = (groups[acc.currency] || 0) + Number(acc.balance)
+    }
+    return Object.entries(groups)
+      .sort(([a], [b]) => {
+        if (a === defaultCurrency) return -1
+        if (b === defaultCurrency) return 1
+        return (groups[b as Currency] || 0) - (groups[a as Currency] || 0)
+      })
+      .map(([currency, total]) => ({ currency: currency as Currency, total: total as number }))
+  }, [myAccounts, partnerAccounts, defaultCurrency])
+
+  // Last updated timestamp
+  const lastUpdated = useMemo(() => {
+    const allAccounts = [...myAccounts, ...partnerAccounts]
+    if (allAccounts.length === 0) return null
+    return allAccounts.reduce((latest, acc) => {
+      const d = new Date(acc.updated_at)
+      return d > latest ? d : latest
+    }, new Date(0))
+  }, [myAccounts, partnerAccounts])
 
   // ─── Recurring expenses ─────────────────────────────
 
@@ -206,6 +247,17 @@ export const BudgetOverviewView: React.FC = () => {
       const bNext = b.day_of_month >= todayDay ? b.day_of_month - todayDay : b.day_of_month + 31 - todayDay
       return aNext - bNext
     })
+  }
+
+  // User names
+  const myName = couple ? (userId === couple.user1_id ? couple.user1_name : couple.user2_name) || 'Я' : 'Я'
+  const partnerName = couple ? (userId === couple.user1_id ? couple.user2_name : couple.user1_name) || 'Партнёр' : 'Партнёр'
+
+  const getExpOwnerName = (expUserId: string) => {
+    if (!couple) return ''
+    if (expUserId === couple.user1_id) return couple.user1_name || 'User 1'
+    if (expUserId === couple.user2_id) return couple.user2_name || 'User 2'
+    return ''
   }
 
   const recentTransactions = transactions.slice(0, 5)
@@ -242,8 +294,9 @@ export const BudgetOverviewView: React.FC = () => {
       name: expName.trim(), emoji: expEmoji, amount, currency: expCurrency,
       day_of_month: day, type: expType, context: budgetContext,
       category_id: expType === 'bill' ? expCategoryId : null,
+      ...(expOwnerId ? { user_id: expOwnerId } : {}),
     })
-    setExpName(''); setExpEmoji('📅'); setExpAmount(''); setExpDay(''); setExpCategoryId(null); setShowAddExpense(false)
+    setExpName(''); setExpEmoji('📅'); setExpAmount(''); setExpDay(''); setExpCategoryId(null); setExpOwnerId(null); setShowAddExpense(false)
   }
 
   const handleUpdateExpenseAmount = async (id: string) => {
@@ -323,12 +376,32 @@ export const BudgetOverviewView: React.FC = () => {
           >
             <div className="flex items-center gap-2">
               <Wallet size={14} className="text-[var(--color-text-tertiary)]" />
-              <p className="text-xs font-medium text-[var(--color-text-tertiary)] uppercase tracking-wide">Баланс</p>
+              <div>
+                <p className="text-xs font-medium text-[var(--color-text-tertiary)] uppercase tracking-wide">Баланс</p>
+                {lastUpdated && (
+                  <p className="text-[10px] text-[var(--color-text-tertiary)]">
+                    Обновлено: {formatRelativeTime(lastUpdated)}
+                  </p>
+                )}
+              </div>
             </div>
             <div className="flex items-center gap-1">
-              <span className="text-sm font-bold text-[var(--color-text-primary)]">
-                {formatAmount(totalBalance, defaultCurrency)}
-              </span>
+              <div className="flex items-center gap-1.5 flex-wrap justify-end">
+                {balanceByCurrency.length > 0 ? (
+                  balanceByCurrency.map((group, i) => (
+                    <React.Fragment key={group.currency}>
+                      {i > 0 && <span className="text-xs text-[var(--color-text-tertiary)]">·</span>}
+                      <span className="text-sm font-bold text-[var(--color-text-primary)]">
+                        {formatAmount(group.total, group.currency)}
+                      </span>
+                    </React.Fragment>
+                  ))
+                ) : (
+                  <span className="text-sm font-bold text-[var(--color-text-primary)]">
+                    {formatAmount(0, defaultCurrency)}
+                  </span>
+                )}
+              </div>
               {balanceExpanded ? <ChevronUp size={12} className="text-[var(--color-text-tertiary)]" /> : <ChevronDown size={12} className="text-[var(--color-text-tertiary)]" />}
             </div>
           </button>
@@ -342,24 +415,10 @@ export const BudgetOverviewView: React.FC = () => {
                 transition={transitions.smooth}
                 className="mt-3 space-y-3"
               >
-                {/* Per-user balances */}
-                <div className="flex gap-4">
-                  <div className="flex-1 p-2 rounded-lg bg-[var(--color-bg-tertiary)]">
-                    <p className="text-[10px] text-[var(--color-text-tertiary)]">Мой</p>
-                    <p className="text-sm font-semibold text-[var(--color-text-primary)]">{formatAmount(myBalance, defaultCurrency)}</p>
-                  </div>
-                  {couple.user2_id && (
-                    <div className="flex-1 p-2 rounded-lg bg-[var(--color-bg-tertiary)]">
-                      <p className="text-[10px] text-[var(--color-text-tertiary)]">Партнёр</p>
-                      <p className="text-sm font-semibold text-[var(--color-text-primary)]">{formatAmount(partnerBalance, defaultCurrency)}</p>
-                    </div>
-                  )}
-                </div>
-
                 {/* My accounts */}
                 {myAccounts.length > 0 && (
                   <div className="space-y-1.5">
-                    <p className="text-[10px] text-[var(--color-text-tertiary)]">Мои счета</p>
+                    <p className="text-[10px] text-[var(--color-text-tertiary)]">Счета {myName}</p>
                     {myAccounts.map(acc => (
                       <div key={acc.id} className="flex items-center justify-between py-1.5 group">
                         <div className="flex items-center gap-2">
@@ -399,7 +458,7 @@ export const BudgetOverviewView: React.FC = () => {
                 {/* Partner accounts */}
                 {partnerAccounts.length > 0 && (
                   <div className="space-y-1.5">
-                    <p className="text-[10px] text-[var(--color-text-tertiary)]">Счета партнёра</p>
+                    <p className="text-[10px] text-[var(--color-text-tertiary)]">Счета {partnerName}</p>
                     {partnerAccounts.map(acc => (
                       <div key={acc.id} className="flex items-center justify-between py-1.5">
                         <div className="flex items-center gap-2">
@@ -551,7 +610,7 @@ export const BudgetOverviewView: React.FC = () => {
                                   <div>
                                     <span className="text-sm text-[var(--color-text-primary)]">{exp.name}</span>
                                     <p className={`text-[10px] ${styles.text}`}>
-                                      {exp.day_of_month}-е · {dateLabel}
+                                      {exp.day_of_month}-е · {dateLabel}{couple && exp.user_id !== userId ? ` · ${getExpOwnerName(exp.user_id)}` : ''}
                                     </p>
                                   </div>
                                 </div>
@@ -675,7 +734,7 @@ export const BudgetOverviewView: React.FC = () => {
                                 {exp.name}
                               </span>
                               <p className="text-[10px] text-[var(--color-text-tertiary)]">
-                                {exp.day_of_month}-е · {dateLabel} · авто
+                                {exp.day_of_month}-е · {dateLabel} · авто{couple && exp.user_id !== userId ? ` · ${getExpOwnerName(exp.user_id)}` : ''}
                               </p>
                             </div>
                           </div>
@@ -736,6 +795,28 @@ export const BudgetOverviewView: React.FC = () => {
                     Подписка
                   </button>
                 </div>
+
+                {/* Owner toggle */}
+                {couple && couple.user2_id && (
+                  <div className="flex gap-1 p-0.5 rounded-lg bg-[var(--color-bg-tertiary)] w-fit">
+                    <button
+                      onClick={() => setExpOwnerId(null)}
+                      className={`px-3 py-1 rounded-md text-xs font-medium transition-colors ${
+                        !expOwnerId || expOwnerId === userId ? 'bg-[var(--color-bg-elevated)] text-[var(--color-text-primary)] shadow-sm' : 'text-[var(--color-text-tertiary)]'
+                      }`}
+                    >
+                      {myName}
+                    </button>
+                    <button
+                      onClick={() => setExpOwnerId(userId === couple.user1_id ? couple.user2_id : couple.user1_id)}
+                      className={`px-3 py-1 rounded-md text-xs font-medium transition-colors ${
+                        expOwnerId && expOwnerId !== userId ? 'bg-[var(--color-bg-elevated)] text-[var(--color-text-primary)] shadow-sm' : 'text-[var(--color-text-tertiary)]'
+                      }`}
+                    >
+                      {partnerName}
+                    </button>
+                  </div>
+                )}
 
                 <div className="flex gap-1.5 flex-wrap">
                   {EXPENSE_EMOJIS.map(e => (

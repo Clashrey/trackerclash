@@ -1,9 +1,11 @@
 import React, { useState, useEffect } from 'react'
 import { Plus } from 'lucide-react'
 import { motion } from 'framer-motion'
+import { toast } from 'sonner'
 import { useAppStore } from '@/store'
 import { useBudget, CURRENCY_SYMBOLS } from '@/hooks/useBudget'
 import { CategoryPicker } from './CategoryPicker'
+import { computeTransactionInsight } from './transactionInsights'
 import { formatLocalDate } from '@/store'
 import {
   Sheet,
@@ -91,6 +93,19 @@ export const AddTransactionSheet: React.FC<AddTransactionSheetProps> = ({
         })
       } else {
         localStorage.setItem(LAST_CATEGORY_KEY, categoryId)
+
+        // Compute insight BEFORE adding (using current data + new amount)
+        const { transactions, budgetLimits, budgetSelectedMonth, budgetCategories } = useAppStore.getState()
+        const insight = computeTransactionInsight({
+          categoryId,
+          amount: numAmount,
+          currency,
+          budgetLimits,
+          transactions,
+          budgetSelectedMonth,
+          budgetCategories,
+        })
+
         await addTransaction({
           amount: numAmount,
           currency,
@@ -100,6 +115,16 @@ export const AddTransactionSheet: React.FC<AddTransactionSheetProps> = ({
           description: description.trim() || null,
           date,
         })
+
+        // Show insight after a short delay so the success toast shows first
+        if (insight) {
+          setTimeout(() => {
+            toast(insight.message, {
+              icon: insight.icon,
+              duration: 4000,
+            })
+          }, 500)
+        }
       }
       setOpen(false)
     } catch {

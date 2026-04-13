@@ -20,6 +20,8 @@ export interface Couple {
   id: string
   user1_id: string
   user2_id: string
+  user1_name: string | null
+  user2_name: string | null
   invite_code: string
   created_at: string
 }

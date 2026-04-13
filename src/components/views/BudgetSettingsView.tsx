@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { GripVertical, Plus, Archive, Copy, Users, Link2 } from 'lucide-react'
+import { Plus, Archive, Copy, Users, Link2 } from 'lucide-react'
 import { useAppStore } from '@/store'
 import { useBudget, CURRENCY_SYMBOLS } from '@/hooks/useBudget'
 import { BudgetContextSwitcher } from '@/components/BudgetContextSwitcher'
@@ -34,7 +34,6 @@ export const BudgetSettingsView: React.FC = () => {
     budgetSelectedMonth,
   } = useAppStore()
   const {
-    loadBudgetData,
     createCouple,
     joinCouple,
     addCategory,
@@ -60,10 +59,6 @@ export const BudgetSettingsView: React.FC = () => {
   const [limitInputs, setLimitInputs] = useState<Record<string, string>>({})
 
   const defaultCurrency: Currency = budgetContext === 'personal' ? 'THB' : 'RUB'
-
-  useEffect(() => {
-    loadBudgetData()
-  }, [budgetContext, budgetSelectedMonth])
 
   useEffect(() => {
     const inputs: Record<string, string> = {}
@@ -221,7 +216,6 @@ export const BudgetSettingsView: React.FC = () => {
                 key={cat.id}
                 className="flex items-center gap-2 p-2 rounded-lg hover:bg-[var(--color-bg-tertiary)] group"
               >
-                <GripVertical size={14} className="text-[var(--color-text-tertiary)] opacity-0 group-hover:opacity-100" />
                 <span className="text-lg">{cat.emoji}</span>
                 <button
                   onClick={() => openEditCategory(cat)}

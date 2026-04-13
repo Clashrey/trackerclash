@@ -1,6 +1,7 @@
-import React, { lazy, Suspense } from 'react'
+import React, { lazy, Suspense, useEffect } from 'react'
 import { AnimatePresence, motion } from 'framer-motion'
 import { useAppStore } from '@/store'
+import { useBudget } from '@/hooks/useBudget'
 import { Navigation } from '@/components/Navigation'
 import { BottomNavigation } from '@/components/BottomNavigation'
 import { TodayView } from '@/components/views/TodayView'
@@ -35,8 +36,16 @@ const SuspenseFallback = (
 )
 
 export const Layout: React.FC = () => {
-  const { currentCategory } = useAppStore()
+  const { currentCategory, appMode, budgetContext, budgetSelectedMonth } = useAppStore()
+  const { loadBudgetData } = useBudget()
   useKeyboardShortcuts()
+
+  // Centralized budget data loading — all budget views share this
+  useEffect(() => {
+    if (appMode === 'budget') {
+      loadBudgetData()
+    }
+  }, [appMode, budgetContext, budgetSelectedMonth])
 
   const renderCurrentView = () => {
     switch (currentCategory) {

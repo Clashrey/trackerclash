@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import {
-  Plus, X, Wallet, TrendingDown, ChevronRight, ChevronDown, ChevronUp,
+  Plus, X, Wallet, TrendingDown, ChevronRight, ChevronDown, ChevronUp, ChevronLeft,
   CalendarClock, Trash2, Check, Bell,
 } from 'lucide-react'
 import { useAppStore } from '@/store'
@@ -44,6 +44,41 @@ function getCurrentMonth(): string {
 const ACCOUNT_EMOJIS = ['🏦', '💳', '💰', '🪙', '📱', '🏧', '💵', '🐖', '🔐', '🏠']
 const EXPENSE_EMOJIS = ['📅', '🔄', '🏠', '🏍️', '📱', '💡', '🎬', '🏋️', '☁️', '🎵', '📦', '🛡️']
 
+// Russian day declension: "1 день", "3 дня", "5 дней"
+function pluralDays(n: number): string {
+  const abs = Math.abs(n)
+  if (abs % 10 === 1 && abs % 100 !== 11) return `${abs} день`
+  if (abs % 10 >= 2 && abs % 10 <= 4 && (abs % 100 < 10 || abs % 100 >= 20)) return `${abs} дня`
+  return `${abs} дней`
+}
+
+type BillState = 'overdue' | 'today' | 'soon' | 'upcoming' | 'paid'
+
+function getBillState(dayOfMonth: number, todayDay: number, isPaid: boolean): BillState {
+  if (isPaid) return 'paid'
+  const diff = dayOfMonth - todayDay
+  if (diff < 0) return 'overdue'
+  if (diff === 0) return 'today'
+  if (diff <= 3) return 'soon'
+  return 'upcoming'
+}
+
+function getBillDateLabel(dayOfMonth: number, todayDay: number, isPaid: boolean): string {
+  if (isPaid) return 'оплачено'
+  const diff = dayOfMonth - todayDay
+  if (diff < 0) return `просрочено на ${pluralDays(-diff)}`
+  if (diff === 0) return 'сегодня'
+  return `через ${pluralDays(diff)}`
+}
+
+const BILL_STATE_STYLES: Record<BillState, { dot: string; text: string; bg: string }> = {
+  overdue: { dot: 'bg-red-500', text: 'text-red-600 dark:text-red-400', bg: 'bg-red-50 dark:bg-red-900/20' },
+  today: { dot: 'bg-amber-500', text: 'text-amber-600 dark:text-amber-400', bg: 'bg-amber-50 dark:bg-amber-900/20' },
+  soon: { dot: 'bg-amber-400', text: 'text-amber-600 dark:text-amber-400', bg: '' },
+  upcoming: { dot: 'bg-gray-300 dark:bg-gray-600', text: 'text-[var(--color-text-tertiary)]', bg: '' },
+  paid: { dot: 'bg-green-500', text: 'text-green-600 dark:text-green-400', bg: '' },
+}
+
 // ─── Component ────────────────────────────────────────
 
 export const BudgetOverviewView: React.FC = () => {
@@ -56,9 +91,10 @@ export const BudgetOverviewView: React.FC = () => {
     accounts,
     recurringExpenses,
     userId,
+    budgetSelectedMonth,
+    setBudgetSelectedMonth,
   } = useAppStore()
   const {
-    loadBudgetData,
     addAccount,
     updateAccount,
     deleteAccount,
@@ -90,13 +126,13 @@ export const BudgetOverviewView: React.FC = () => {
 
   // Collapsible balance
   const [balanceExpanded, setBalanceExpanded] = useState(false)
+  // Collapsible recurring sub-blocks
+  const [billsExpanded, setBillsExpanded] = useState(true)
+  const [subsExpanded, setSubsExpanded] = useState(true)
+  const [paidVisible, setPaidVisible] = useState(false)
 
   // Expense payment status for current month
   const [paidMap, setPaidMap] = useState<Record<string, boolean>>({})
-
-  useEffect(() => {
-    loadBudgetData()
-  }, [budgetContext])
 
   // Load payment status
   useEffect(() => {
@@ -106,6 +142,19 @@ export const BudgetOverviewView: React.FC = () => {
   }, [couple, transactions])
 
   const defaultCurrency: Currency = budgetContext === 'personal' ? 'THB' : 'RUB'
+
+  // Month navigation
+  const monthLabel = useMemo(() => {
+    const [y, m] = budgetSelectedMonth.split('-')
+    const date = new Date(Number(y), Number(m) - 1)
+    return date.toLocaleDateString('ru-RU', { month: 'long', year: 'numeric' })
+  }, [budgetSelectedMonth])
+
+  const navigateMonth = (delta: number) => {
+    const [y, m] = budgetSelectedMonth.split('-').map(Number)
+    const d = new Date(y, m - 1 + delta)
+    setBudgetSelectedMonth(`${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`)
+  }
 
   // ─── Spending calculations ──────────────────────────
 
@@ -237,6 +286,25 @@ export const BudgetOverviewView: React.FC = () => {
         <BudgetContextSwitcher />
       </div>
 
+      {/* Month navigation */}
+      <div className="flex items-center justify-center gap-4">
+        <button
+          onClick={() => navigateMonth(-1)}
+          className="p-1.5 rounded-lg hover:bg-[var(--color-bg-tertiary)] text-[var(--color-text-secondary)]"
+        >
+          <ChevronLeft size={18} />
+        </button>
+        <span className="text-sm font-medium text-[var(--color-text-primary)] capitalize min-w-[140px] text-center">
+          {monthLabel}
+        </span>
+        <button
+          onClick={() => navigateMonth(1)}
+          className="p-1.5 rounded-lg hover:bg-[var(--color-bg-tertiary)] text-[var(--color-text-secondary)]"
+        >
+          <ChevronRight size={18} />
+        </button>
+      </div>
+
       {/* ═══ DUE BILLS NOTIFICATION ═══ */}
       {dueBills.length > 0 && (
         <motion.div
@@ -348,7 +416,7 @@ export const BudgetOverviewView: React.FC = () => {
                             </button>
                           )}
                           <button
-                            onClick={() => deleteAccount(acc.id)}
+                            onClick={() => { if (window.confirm('Удалить счёт?')) deleteAccount(acc.id) }}
                             className="p-0.5 rounded text-[var(--color-text-tertiary)] hover:text-[var(--color-danger)] opacity-0 group-hover:opacity-100 transition-all"
                           >
                             <X size={12} />
@@ -475,108 +543,196 @@ export const BudgetOverviewView: React.FC = () => {
             )}
           </div>
 
-          {/* Bills */}
+          {/* ── Bills sub-block ── */}
           {bills.length > 0 && (
-            <div className="space-y-1.5 mb-3">
-              <p className="text-[10px] text-[var(--color-text-tertiary)] font-medium uppercase tracking-wide">Счета и оплаты</p>
-              {sortByNext(bills).map(exp => {
-                const isPaid = paidMap[exp.id]
-                return (
-                  <div key={exp.id} className="flex items-center justify-between py-1.5 group">
-                    <div className="flex items-center gap-2">
-                      <span className="text-base">{exp.emoji}</span>
-                      <div>
-                        <span className={`text-sm ${isPaid ? 'text-[var(--color-text-tertiary)] line-through' : 'text-[var(--color-text-primary)]'}`}>
-                          {exp.name}
-                        </span>
-                        <p className="text-[10px] text-[var(--color-text-tertiary)]">
-                          {exp.day_of_month}-е число
-                        </p>
-                      </div>
-                    </div>
-                    <div className="flex items-center gap-1.5">
-                      {editingExpenseId === exp.id ? (
-                        <input type="text" inputMode="decimal" value={editExpAmount}
-                          onChange={(e) => setEditExpAmount(e.target.value.replace(/[^0-9.,]/g, '').replace(',', '.'))}
-                          onBlur={() => handleUpdateExpenseAmount(exp.id)}
-                          onKeyDown={(e) => { if (e.key === 'Enter') handleUpdateExpenseAmount(exp.id) }}
-                          autoFocus
-                          className="w-24 px-2 py-0.5 rounded bg-[var(--color-bg-tertiary)] text-sm text-right text-[var(--color-text-primary)] outline-none" />
-                      ) : (
-                        <button
-                          onClick={() => { setEditingExpenseId(exp.id); setEditExpAmount(String(exp.amount)) }}
-                          className={`text-sm font-medium transition-colors hover:text-[var(--color-accent)] ${isPaid ? 'text-[var(--color-text-tertiary)]' : 'text-[var(--color-text-primary)]'}`}>
-                          {formatAmount(Number(exp.amount), exp.currency)}
-                        </button>
-                      )}
-                      {!isPaid ? (
-                        <button
-                          onClick={() => handleMarkPaid(exp.id)}
-                          className="p-1 rounded-md bg-[var(--color-bg-tertiary)] text-[var(--color-text-tertiary)] hover:bg-[var(--color-success)] hover:text-white transition-colors"
-                          title="Отметить оплаченным"
-                        >
-                          <Check size={12} />
-                        </button>
-                      ) : (
-                        <span className="p-1 rounded-md bg-[var(--color-success)] text-white">
-                          <Check size={12} />
-                        </span>
-                      )}
-                      <button
-                        onClick={() => deleteRecurringExpense(exp.id)}
-                        className="p-0.5 rounded text-[var(--color-text-tertiary)] hover:text-[var(--color-danger)] opacity-0 group-hover:opacity-100 transition-all">
-                        <Trash2 size={12} />
-                      </button>
-                    </div>
-                  </div>
-                )
-              })}
+            <div className="mb-3">
+              <button
+                onClick={() => setBillsExpanded(!billsExpanded)}
+                className="flex items-center gap-1.5 w-full mb-1.5"
+              >
+                {billsExpanded ? <ChevronDown size={12} /> : <ChevronRight size={12} />}
+                <p className="text-[10px] text-[var(--color-text-tertiary)] font-medium uppercase tracking-wide">
+                  Счета и оплаты ({bills.filter(b => !paidMap[b.id]).length}/{bills.length})
+                </p>
+              </button>
+              <AnimatePresence>
+                {billsExpanded && (
+                  <motion.div
+                    initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} exit={{ opacity: 0, height: 0 }}
+                    transition={transitions.smooth}
+                    className="space-y-1"
+                  >
+                    {(() => {
+                      const sorted = sortByNext(bills)
+                      const unpaid = sorted.filter(b => !paidMap[b.id])
+                      const paid = sorted.filter(b => paidMap[b.id])
+                      return (
+                        <>
+                          {unpaid.map(exp => {
+                            const state = getBillState(exp.day_of_month, todayDay, false)
+                            const styles = BILL_STATE_STYLES[state]
+                            const dateLabel = getBillDateLabel(exp.day_of_month, todayDay, false)
+                            return (
+                              <div key={exp.id} className={`flex items-center justify-between py-2 px-2 rounded-lg group ${styles.bg}`}>
+                                <div className="flex items-center gap-2">
+                                  <div className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${styles.dot}`} />
+                                  <span className="text-base">{exp.emoji}</span>
+                                  <div>
+                                    <span className="text-sm text-[var(--color-text-primary)]">{exp.name}</span>
+                                    <p className={`text-[10px] ${styles.text}`}>
+                                      {exp.day_of_month}-е · {dateLabel}
+                                    </p>
+                                  </div>
+                                </div>
+                                <div className="flex items-center gap-1.5">
+                                  {editingExpenseId === exp.id ? (
+                                    <input type="text" inputMode="decimal" value={editExpAmount}
+                                      onChange={(e) => setEditExpAmount(e.target.value.replace(/[^0-9.,]/g, '').replace(',', '.'))}
+                                      onBlur={() => handleUpdateExpenseAmount(exp.id)}
+                                      onKeyDown={(e) => { if (e.key === 'Enter') handleUpdateExpenseAmount(exp.id) }}
+                                      autoFocus
+                                      className="w-24 px-2 py-0.5 rounded bg-[var(--color-bg-tertiary)] text-sm text-right text-[var(--color-text-primary)] outline-none" />
+                                  ) : (
+                                    <button
+                                      onClick={() => { setEditingExpenseId(exp.id); setEditExpAmount(String(exp.amount)) }}
+                                      className="text-sm font-medium text-[var(--color-text-primary)] hover:text-[var(--color-accent)] transition-colors">
+                                      {formatAmount(Number(exp.amount), exp.currency)}
+                                    </button>
+                                  )}
+                                  <button
+                                    onClick={() => handleMarkPaid(exp.id)}
+                                    className="p-1 rounded-md bg-[var(--color-bg-tertiary)] text-[var(--color-text-tertiary)] hover:bg-green-500 hover:text-white transition-colors"
+                                    title="Отметить оплаченным"
+                                  >
+                                    <Check size={12} />
+                                  </button>
+                                  <button
+                                    onClick={() => { if (window.confirm('Удалить расход?')) deleteRecurringExpense(exp.id) }}
+                                    className="p-0.5 rounded text-[var(--color-text-tertiary)] hover:text-[var(--color-danger)] opacity-0 group-hover:opacity-100 transition-all">
+                                    <Trash2 size={12} />
+                                  </button>
+                                </div>
+                              </div>
+                            )
+                          })}
+
+                          {/* Paid items — collapsed by default */}
+                          {paid.length > 0 && (
+                            <>
+                              <button
+                                onClick={() => setPaidVisible(!paidVisible)}
+                                className="flex items-center gap-1 text-[10px] text-[var(--color-text-tertiary)] mt-1"
+                              >
+                                {paidVisible ? <ChevronDown size={10} /> : <ChevronRight size={10} />}
+                                Оплачено ({paid.length})
+                              </button>
+                              <AnimatePresence>
+                                {paidVisible && paid.map(exp => (
+                                  <motion.div
+                                    key={exp.id}
+                                    initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} exit={{ opacity: 0, height: 0 }}
+                                    className="flex items-center justify-between py-1.5 px-2 rounded-lg group"
+                                  >
+                                    <div className="flex items-center gap-2">
+                                      <div className="w-1.5 h-1.5 rounded-full flex-shrink-0 bg-green-500" />
+                                      <span className="text-base opacity-50">{exp.emoji}</span>
+                                      <div>
+                                        <span className="text-sm text-[var(--color-text-tertiary)] line-through">{exp.name}</span>
+                                        <p className="text-[10px] text-green-600 dark:text-green-400">оплачено</p>
+                                      </div>
+                                    </div>
+                                    <div className="flex items-center gap-1.5">
+                                      <span className="text-sm text-[var(--color-text-tertiary)]">
+                                        {formatAmount(Number(exp.amount), exp.currency)}
+                                      </span>
+                                      <span className="p-1 rounded-md bg-green-500 text-white">
+                                        <Check size={12} />
+                                      </span>
+                                      <button
+                                        onClick={() => { if (window.confirm('Удалить расход?')) deleteRecurringExpense(exp.id) }}
+                                        className="p-0.5 rounded text-[var(--color-text-tertiary)] hover:text-[var(--color-danger)] opacity-0 group-hover:opacity-100 transition-all">
+                                        <Trash2 size={12} />
+                                      </button>
+                                    </div>
+                                  </motion.div>
+                                ))}
+                              </AnimatePresence>
+                            </>
+                          )}
+                        </>
+                      )
+                    })()}
+                  </motion.div>
+                )}
+              </AnimatePresence>
             </div>
           )}
 
-          {/* Subscriptions */}
+          {/* ── Subscriptions sub-block ── */}
           {subscriptions.length > 0 && (
-            <div className="space-y-1.5 mb-3">
-              <p className="text-[10px] text-[var(--color-text-tertiary)] font-medium uppercase tracking-wide">Подписки</p>
-              {sortByNext(subscriptions).map(exp => {
-                const isPaid = paidMap[exp.id] || exp.day_of_month <= todayDay
-                return (
-                  <div key={exp.id} className="flex items-center justify-between py-1.5 group">
-                    <div className="flex items-center gap-2">
-                      <span className="text-base">{exp.emoji}</span>
-                      <div>
-                        <span className={`text-sm ${isPaid ? 'text-[var(--color-text-tertiary)]' : 'text-[var(--color-text-primary)]'}`}>
-                          {exp.name}
-                        </span>
-                        <p className="text-[10px] text-[var(--color-text-tertiary)]">
-                          {exp.day_of_month}-е число · авто
-                        </p>
-                      </div>
-                    </div>
-                    <div className="flex items-center gap-1.5">
-                      {editingExpenseId === exp.id ? (
-                        <input type="text" inputMode="decimal" value={editExpAmount}
-                          onChange={(e) => setEditExpAmount(e.target.value.replace(/[^0-9.,]/g, '').replace(',', '.'))}
-                          onBlur={() => handleUpdateExpenseAmount(exp.id)}
-                          onKeyDown={(e) => { if (e.key === 'Enter') handleUpdateExpenseAmount(exp.id) }}
-                          autoFocus
-                          className="w-24 px-2 py-0.5 rounded bg-[var(--color-bg-tertiary)] text-sm text-right text-[var(--color-text-primary)] outline-none" />
-                      ) : (
-                        <button
-                          onClick={() => { setEditingExpenseId(exp.id); setEditExpAmount(String(exp.amount)) }}
-                          className={`text-sm font-medium transition-colors hover:text-[var(--color-accent)] ${isPaid ? 'text-[var(--color-text-tertiary)]' : 'text-[var(--color-text-primary)]'}`}>
-                          {formatAmount(Number(exp.amount), exp.currency)}
-                        </button>
-                      )}
-                      <button
-                        onClick={() => deleteRecurringExpense(exp.id)}
-                        className="p-0.5 rounded text-[var(--color-text-tertiary)] hover:text-[var(--color-danger)] opacity-0 group-hover:opacity-100 transition-all">
-                        <Trash2 size={12} />
-                      </button>
-                    </div>
-                  </div>
-                )
-              })}
+            <div className="mb-3">
+              <button
+                onClick={() => setSubsExpanded(!subsExpanded)}
+                className="flex items-center gap-1.5 w-full mb-1.5"
+              >
+                {subsExpanded ? <ChevronDown size={12} /> : <ChevronRight size={12} />}
+                <p className="text-[10px] text-[var(--color-text-tertiary)] font-medium uppercase tracking-wide">
+                  Подписки ({subscriptions.length})
+                </p>
+              </button>
+              <AnimatePresence>
+                {subsExpanded && (
+                  <motion.div
+                    initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} exit={{ opacity: 0, height: 0 }}
+                    transition={transitions.smooth}
+                    className="space-y-1"
+                  >
+                    {sortByNext(subscriptions).map(exp => {
+                      const charged = exp.day_of_month <= todayDay
+                      const dateLabel = charged
+                        ? 'списано'
+                        : getBillDateLabel(exp.day_of_month, todayDay, false)
+                      return (
+                        <div key={exp.id} className="flex items-center justify-between py-1.5 px-2 rounded-lg group">
+                          <div className="flex items-center gap-2">
+                            <div className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${charged ? 'bg-green-500' : 'bg-gray-300 dark:bg-gray-600'}`} />
+                            <span className="text-base">{exp.emoji}</span>
+                            <div>
+                              <span className={`text-sm ${charged ? 'text-[var(--color-text-tertiary)]' : 'text-[var(--color-text-primary)]'}`}>
+                                {exp.name}
+                              </span>
+                              <p className="text-[10px] text-[var(--color-text-tertiary)]">
+                                {exp.day_of_month}-е · {dateLabel} · авто
+                              </p>
+                            </div>
+                          </div>
+                          <div className="flex items-center gap-1.5">
+                            {editingExpenseId === exp.id ? (
+                              <input type="text" inputMode="decimal" value={editExpAmount}
+                                onChange={(e) => setEditExpAmount(e.target.value.replace(/[^0-9.,]/g, '').replace(',', '.'))}
+                                onBlur={() => handleUpdateExpenseAmount(exp.id)}
+                                onKeyDown={(e) => { if (e.key === 'Enter') handleUpdateExpenseAmount(exp.id) }}
+                                autoFocus
+                                className="w-24 px-2 py-0.5 rounded bg-[var(--color-bg-tertiary)] text-sm text-right text-[var(--color-text-primary)] outline-none" />
+                            ) : (
+                              <button
+                                onClick={() => { setEditingExpenseId(exp.id); setEditExpAmount(String(exp.amount)) }}
+                                className={`text-sm font-medium transition-colors hover:text-[var(--color-accent)] ${charged ? 'text-[var(--color-text-tertiary)]' : 'text-[var(--color-text-primary)]'}`}>
+                                {formatAmount(Number(exp.amount), exp.currency)}
+                              </button>
+                            )}
+                            <button
+                              onClick={() => { if (window.confirm('Удалить расход?')) deleteRecurringExpense(exp.id) }}
+                              className="p-0.5 rounded text-[var(--color-text-tertiary)] hover:text-[var(--color-danger)] opacity-0 group-hover:opacity-100 transition-all">
+                              <Trash2 size={12} />
+                            </button>
+                          </div>
+                        </div>
+                      )
+                    })}
+                  </motion.div>
+                )}
+              </AnimatePresence>
             </div>
           )}
 

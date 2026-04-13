@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useMemo } from 'react'
+import React, { useState, useMemo } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { ChevronLeft, ChevronRight, Trash2 } from 'lucide-react'
 import { useAppStore } from '@/store'
@@ -39,15 +39,11 @@ export const BudgetTransactionsView: React.FC = () => {
     budgetSelectedMonth,
     setBudgetSelectedMonth,
   } = useAppStore()
-  const { loadBudgetData, deleteTransaction } = useBudget()
+  const { deleteTransaction } = useBudget()
 
   const [filterCategoryId, setFilterCategoryId] = useState<string | null>(null)
   const [editingTxn, setEditingTxn] = useState<Transaction | null>(null)
   const [editSheetOpen, setEditSheetOpen] = useState(false)
-
-  useEffect(() => {
-    loadBudgetData()
-  }, [budgetContext, budgetSelectedMonth])
 
   const defaultCurrency: Currency = budgetContext === 'personal' ? 'THB' : 'RUB'
 
@@ -96,6 +92,7 @@ export const BudgetTransactionsView: React.FC = () => {
   }
 
   const handleDelete = async (id: string) => {
+    if (!window.confirm('Удалить транзакцию?')) return
     await deleteTransaction(id)
   }
 
@@ -134,7 +131,8 @@ export const BudgetTransactionsView: React.FC = () => {
       </div>
 
       {/* Category filter chips */}
-      <div className="flex gap-1.5 overflow-x-auto scrollbar-hide pb-1">
+      <div className="relative">
+      <div className="flex gap-1.5 overflow-x-auto scrollbar-hide pb-1 pr-6">
         <button
           onClick={() => setFilterCategoryId(null)}
           className={`flex-shrink-0 px-3 py-1 rounded-full text-xs font-medium transition-colors ${
@@ -158,6 +156,8 @@ export const BudgetTransactionsView: React.FC = () => {
             {cat.emoji} {cat.name}
           </button>
         ))}
+      </div>
+      <div className="absolute right-0 top-0 bottom-1 w-8 bg-gradient-to-l from-[var(--color-bg-secondary)] to-transparent pointer-events-none" />
       </div>
 
       {/* Grouped by day */}
@@ -252,7 +252,6 @@ export const BudgetTransactionsView: React.FC = () => {
           if (!open) setEditingTxn(null)
         }}
       />
-      <AddTransactionSheet />
     </div>
   )
 }

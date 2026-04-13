@@ -59,7 +59,7 @@ export function useBudget() {
       setAccounts(accounts)
       setRecurringExpenses(recurringExpenses)
     } catch (error) {
-      console.error('loadBudgetData failed:', error)
+      // error handled by toast
       toast.error('Не удалось загрузить данные бюджета')
     }
   }, [setCouple, setBudgetCategories, setTransactions, setBudgetLimits, setAccounts, setRecurringExpenses])
@@ -75,7 +75,7 @@ export function useBudget() {
       })
       setTransactions(transactions)
     } catch (error) {
-      console.error('reloadTransactions failed:', error)
+
     }
   }, [setTransactions])
 
@@ -87,7 +87,7 @@ export function useBudget() {
       const categories = await budgetDatabaseService.getCategories(couple.id, budgetContext)
       setBudgetCategories(categories)
     } catch (error) {
-      console.error('reloadCategories failed:', error)
+
     }
   }, [setBudgetCategories])
 
@@ -99,7 +99,7 @@ export function useBudget() {
       const limits = await budgetDatabaseService.getBudgetLimits(couple.id, budgetSelectedMonth)
       setBudgetLimits(limits)
     } catch (error) {
-      console.error('reloadLimits failed:', error)
+
     }
   }, [setBudgetLimits])
 
@@ -115,7 +115,7 @@ export function useBudget() {
       }
       return couple
     } catch (error) {
-      console.error('createCouple failed:', error)
+
       toast.error('Не удалось создать пару')
       throw error
     }
@@ -163,7 +163,7 @@ export function useBudget() {
       }
       return txn
     } catch (error) {
-      console.error('addTransaction failed:', error)
+
       toast.error('Не удалось добавить транзакцию')
       throw error
     }
@@ -186,7 +186,7 @@ export function useBudget() {
       }
       return txn
     } catch (error) {
-      console.error('updateTransaction failed:', error)
+
       toast.error('Не удалось обновить транзакцию')
       throw error
     }
@@ -202,7 +202,7 @@ export function useBudget() {
       }
       return success
     } catch (error) {
-      console.error('deleteTransaction failed:', error)
+
       toast.error('Не удалось удалить транзакцию')
       throw error
     }
@@ -230,7 +230,7 @@ export function useBudget() {
       }
       return cat
     } catch (error) {
-      console.error('addCategory failed:', error)
+
       toast.error('Не удалось добавить категорию')
       throw error
     }
@@ -249,7 +249,7 @@ export function useBudget() {
       }
       return cat
     } catch (error) {
-      console.error('updateCategory failed:', error)
+
       toast.error('Не удалось обновить категорию')
       throw error
     }
@@ -265,7 +265,7 @@ export function useBudget() {
       }
       return success
     } catch (error) {
-      console.error('archiveCategory failed:', error)
+
       toast.error('Не удалось архивировать категорию')
       throw error
     }
@@ -284,7 +284,7 @@ export function useBudget() {
 
       await budgetDatabaseService.reorderCategories(ids)
     } catch (error) {
-      console.error('reorderCategories failed:', error)
+
       toast.error('Не удалось изменить порядок')
     }
   }, [setBudgetCategories])
@@ -316,7 +316,7 @@ export function useBudget() {
       }
       return limit
     } catch (error) {
-      console.error('setBudgetLimit failed:', error)
+
       toast.error('Не удалось установить лимит')
       throw error
     }
@@ -331,7 +331,7 @@ export function useBudget() {
       setBudgetLimits(newLimits)
       toast.success('Лимиты скопированы с прошлого месяца')
     } catch (error) {
-      console.error('copyLimitsFromPrevMonth failed:', error)
+
       toast.error('Не удалось скопировать лимиты')
       throw error
     }
@@ -359,7 +359,7 @@ export function useBudget() {
       }
       return account
     } catch (error) {
-      console.error('addAccount failed:', error)
+
       toast.error('Не удалось добавить счёт')
       throw error
     }
@@ -379,7 +379,7 @@ export function useBudget() {
       }
       return account
     } catch (error) {
-      console.error('updateAccount failed:', error)
+
       toast.error('Не удалось обновить счёт')
       throw error
     }
@@ -395,7 +395,7 @@ export function useBudget() {
       }
       return success
     } catch (error) {
-      console.error('deleteAccount failed:', error)
+
       toast.error('Не удалось удалить счёт')
       throw error
     }
@@ -424,7 +424,7 @@ export function useBudget() {
       }
       return expense
     } catch (error) {
-      console.error('addRecurringExpense failed:', error)
+
       toast.error('Не удалось добавить расход')
       throw error
     }
@@ -445,7 +445,7 @@ export function useBudget() {
       }
       return expense
     } catch (error) {
-      console.error('updateRecurringExpense failed:', error)
+
       toast.error('Не удалось обновить расход')
       throw error
     }
@@ -467,7 +467,7 @@ export function useBudget() {
       }
       return txn
     } catch (error) {
-      console.error('markExpensePaid failed:', error)
+
       toast.error('Не удалось отметить оплату')
       throw error
     }
@@ -483,7 +483,7 @@ export function useBudget() {
       }
       return success
     } catch (error) {
-      console.error('deleteRecurringExpense failed:', error)
+
       toast.error('Не удалось удалить расход')
       throw error
     }
@@ -498,7 +498,7 @@ export function useBudget() {
     try {
       return await budgetDatabaseService.getCoupleBalance(couple.id, budgetSelectedMonth)
     } catch (error) {
-      console.error('getCoupleBalance failed:', error)
+
       return null
     }
   }, [])

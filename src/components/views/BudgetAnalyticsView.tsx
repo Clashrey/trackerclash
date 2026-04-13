@@ -2,7 +2,7 @@ import React, { useEffect, useMemo, useState } from 'react'
 import { motion } from 'framer-motion'
 import { PieChart, Pie, Cell, BarChart, Bar, XAxis, YAxis, ResponsiveContainer, Tooltip } from 'recharts'
 import { useAppStore } from '@/store'
-import { useBudget, formatAmount } from '@/hooks/useBudget'
+import { formatAmount } from '@/hooks/useBudget'
 import { BudgetContextSwitcher } from '@/components/BudgetContextSwitcher'
 import { AddTransactionSheet } from '@/components/budget/AddTransactionSheet'
 import { budgetDatabaseService } from '@/lib/budget-database'
@@ -24,13 +24,7 @@ export const BudgetAnalyticsView: React.FC = () => {
     budgetSelectedMonth,
     userId,
   } = useAppStore()
-  const { loadBudgetData } = useBudget()
-
   const [monthlyHistory, setMonthlyHistory] = useState<{ month: string; total: number }[]>([])
-
-  useEffect(() => {
-    loadBudgetData()
-  }, [budgetContext, budgetSelectedMonth])
 
   // Load 6-month history
   useEffect(() => {
@@ -146,17 +140,20 @@ export const BudgetAnalyticsView: React.FC = () => {
                 </ResponsiveContainer>
               </div>
               <div className="flex-1 space-y-1.5 overflow-hidden">
-                {categoryData.map(d => (
-                  <div key={d.id} className="flex items-center justify-between text-xs">
-                    <div className="flex items-center gap-1.5 min-w-0">
-                      <div className="w-2 h-2 rounded-full flex-shrink-0" style={{ backgroundColor: d.color }} />
-                      <span className="text-[var(--color-text-primary)] truncate">{d.emoji} {d.catName}</span>
+                {(() => {
+                  const total = categoryData.reduce((s, d) => s + d.value, 0)
+                  return categoryData.map(d => (
+                    <div key={d.id} className="flex items-center justify-between text-xs">
+                      <div className="flex items-center gap-1.5 min-w-0">
+                        <div className="w-2 h-2 rounded-full flex-shrink-0" style={{ backgroundColor: d.color }} />
+                        <span className="text-[var(--color-text-primary)] truncate">{d.emoji} {d.catName}</span>
+                      </div>
+                      <span className="text-[var(--color-text-secondary)] flex-shrink-0 ml-2">
+                        {formatAmount(d.value, defaultCurrency)} · {total > 0 ? Math.round((d.value / total) * 100) : 0}%
+                      </span>
                     </div>
-                    <span className="text-[var(--color-text-secondary)] flex-shrink-0 ml-2">
-                      {formatAmount(d.value, defaultCurrency)}
-                    </span>
-                  </div>
-                ))}
+                  ))
+                })()}
               </div>
             </div>
           </motion.div>

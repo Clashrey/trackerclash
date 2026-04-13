@@ -35,7 +35,7 @@ export const AddTransactionSheet: React.FC<AddTransactionSheetProps> = ({
   const { addTransaction, updateTransaction } = useBudget()
 
   const defaultCurrency: Currency = budgetContext === 'personal' ? 'THB' : 'RUB'
-  const defaultType: TransactionType = budgetContext === 'work' ? 'shared' : 'shared'
+  const defaultType: TransactionType = 'shared'
 
   const [amount, setAmount] = useState('')
   const [currency, setCurrency] = useState<Currency>(defaultCurrency)
@@ -60,7 +60,7 @@ export const AddTransactionSheet: React.FC<AddTransactionSheetProps> = ({
       } else {
         setAmount('')
         setCurrency(budgetContext === 'personal' ? 'THB' : 'RUB')
-        setType(budgetContext === 'work' ? 'shared' : 'shared')
+        setType('shared')
         setDescription('')
         setDate(formatLocalDate(new Date()))
 

@@ -2,6 +2,7 @@ import { useCallback } from 'react'
 import { toast } from 'sonner'
 import { useAppStore } from '../store'
 import { budgetDatabaseService } from '../lib/budget-database'
+import { fetchExchangeRates } from '../lib/currency-rates'
 import type { Currency, TransactionType, RecurringExpenseType, BudgetContext } from '../types/budget'
 
 const CURRENCY_SYMBOLS: Record<Currency, string> = {
@@ -27,6 +28,7 @@ export function useBudget() {
     setBudgetLimits,
     setAccounts,
     setRecurringExpenses,
+    setExchangeRates,
   } = useAppStore()
 
   const getState = () => useAppStore.getState()
@@ -58,11 +60,14 @@ export function useBudget() {
       setBudgetLimits(limits)
       setAccounts(accounts)
       setRecurringExpenses(recurringExpenses)
+
+      // Load exchange rates (non-blocking)
+      fetchExchangeRates().then(setExchangeRates).catch(() => {})
     } catch (error) {
       // error handled by toast
       toast.error('Не удалось загрузить данные бюджета')
     }
-  }, [setCouple, setBudgetCategories, setTransactions, setBudgetLimits, setAccounts, setRecurringExpenses])
+  }, [setCouple, setBudgetCategories, setTransactions, setBudgetLimits, setAccounts, setRecurringExpenses, setExchangeRates])
 
   const reloadTransactions = useCallback(async () => {
     const { couple, budgetContext, budgetSelectedMonth } = getState()

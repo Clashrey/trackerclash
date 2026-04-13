@@ -11,6 +11,7 @@ import { BudgetContextSwitcher } from '@/components/BudgetContextSwitcher'
 import { AddTransactionSheet } from '@/components/budget/AddTransactionSheet'
 import { CategoryPicker } from '@/components/budget/CategoryPicker'
 import { variants, transitions } from '@/lib/animations'
+import { sumInCurrency, convertAmount } from '@/lib/currency-rates'
 import type { Currency, RecurringExpenseType } from '@/types/budget'
 
 // ─── Helpers ──────────────────────────────────────────
@@ -109,6 +110,7 @@ export const BudgetOverviewView: React.FC = () => {
     accounts,
     recurringExpenses,
     userId,
+    exchangeRates,
   } = useAppStore()
   const {
     addAccount,
@@ -167,29 +169,29 @@ export const BudgetOverviewView: React.FC = () => {
   const week = getWeekBounds()
 
   const spentToday = useMemo(() =>
-    transactions.filter(t => t.date === today).reduce((sum, t) => sum + Number(t.amount), 0),
-    [transactions, today])
+    sumInCurrency(transactions.filter(t => t.date === today), defaultCurrency, exchangeRates),
+    [transactions, today, defaultCurrency, exchangeRates])
 
   const spentThisWeek = useMemo(() =>
-    transactions.filter(t => t.date >= week.start && t.date <= week.end).reduce((sum, t) => sum + Number(t.amount), 0),
-    [transactions, week])
+    sumInCurrency(transactions.filter(t => t.date >= week.start && t.date <= week.end), defaultCurrency, exchangeRates),
+    [transactions, week, defaultCurrency, exchangeRates])
 
   const spentThisMonth = useMemo(() =>
-    transactions.reduce((sum, t) => sum + Number(t.amount), 0),
-    [transactions])
+    sumInCurrency(transactions, defaultCurrency, exchangeRates),
+    [transactions, defaultCurrency, exchangeRates])
 
   // ─── Category leaders ───────────────────────────────
 
   const topCategories = useMemo(() => {
     const totals: Record<string, number> = {}
     for (const t of transactions) {
-      totals[t.category_id] = (totals[t.category_id] || 0) + Number(t.amount)
+      totals[t.category_id] = (totals[t.category_id] || 0) + convertAmount(Number(t.amount), t.currency, defaultCurrency, exchangeRates)
     }
     return budgetCategories
       .map(cat => ({ cat, total: totals[cat.id] || 0 }))
       .filter(c => c.total > 0)
       .sort((a, b) => b.total - a.total)
-  }, [budgetCategories, transactions])
+  }, [budgetCategories, transactions, defaultCurrency, exchangeRates])
 
   const maxCategoryTotal = topCategories[0]?.total || 1
 
@@ -265,10 +267,10 @@ export const BudgetOverviewView: React.FC = () => {
   const categoryTotals = useMemo(() => {
     const totals: Record<string, number> = {}
     for (const t of transactions) {
-      totals[t.category_id] = (totals[t.category_id] || 0) + Number(t.amount)
+      totals[t.category_id] = (totals[t.category_id] || 0) + convertAmount(Number(t.amount), t.currency, defaultCurrency, exchangeRates)
     }
     return totals
-  }, [transactions])
+  }, [transactions, defaultCurrency, exchangeRates])
 
   // ─── Handlers ───────────────────────────────────────
 
@@ -524,6 +526,32 @@ export const BudgetOverviewView: React.FC = () => {
             )}
           </AnimatePresence>
         </motion.div>
+
+        {/* ═══ EXCHANGE RATES ═══ */}
+        {exchangeRates.length > 0 && (
+          <motion.div
+            variants={variants.listItem}
+            transition={transitions.smooth}
+            className="px-4 py-2.5 rounded-xl bg-[var(--color-bg-elevated)] border border-[var(--color-border-primary)] flex items-center justify-between gap-2"
+          >
+            <span className="text-[10px] font-medium text-[var(--color-text-tertiary)] uppercase tracking-wide flex-shrink-0">Курсы</span>
+            <div className="flex items-center gap-3 text-xs text-[var(--color-text-secondary)] flex-wrap justify-end">
+              {(() => {
+                const pairs: [Currency, Currency][] = [['USD', 'RUB'], ['USD', 'THB'], ['THB', 'RUB']]
+                return pairs.map(([from, to]) => {
+                  const rate = exchangeRates.find(r => r.from_currency === from && r.to_currency === to)
+                  if (!rate) return null
+                  return (
+                    <span key={`${from}_${to}`} className="whitespace-nowrap">
+                      <span className="text-[var(--color-text-tertiary)]">{CURRENCY_SYMBOLS[from]}→{CURRENCY_SYMBOLS[to]}</span>{' '}
+                      <span className="font-medium text-[var(--color-text-primary)]">{rate.rate.toFixed(2)}</span>
+                    </span>
+                  )
+                })
+              })()}
+            </div>
+          </motion.div>
+        )}
 
         {/* ═══ SPENDING SECTION ═══ */}
         <motion.div

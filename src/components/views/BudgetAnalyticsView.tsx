@@ -8,6 +8,7 @@ import { BudgetContextSwitcher } from '@/components/BudgetContextSwitcher'
 import { AddTransactionSheet } from '@/components/budget/AddTransactionSheet'
 import { budgetDatabaseService } from '@/lib/budget-database'
 import { variants, transitions } from '@/lib/animations'
+import { sumInCurrency, convertAmount } from '@/lib/currency-rates'
 import type { Currency, Transaction } from '@/types/budget'
 
 const CHART_COLORS = [
@@ -40,6 +41,7 @@ export const BudgetAnalyticsView: React.FC = () => {
     budgetSelectedMonth,
     setBudgetSelectedMonth,
     userId,
+    exchangeRates,
   } = useAppStore()
 
   const [prevMonthTransactions, setPrevMonthTransactions] = useState<Transaction[]>([])
@@ -76,10 +78,12 @@ export const BudgetAnalyticsView: React.FC = () => {
       const historyPromises = Array.from({ length: 6 }, (_, i) => {
         const d = new Date(y, m - 1 - (5 - i))
         const monthStr = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`
+        const dc: Currency = budgetContext === 'personal' ? 'THB' : 'RUB'
+        const rates = useAppStore.getState().exchangeRates
         return budgetDatabaseService.getTransactions(couple.id, { month: monthStr, context: budgetContext })
           .then(txns => ({
             month: d.toLocaleDateString('ru-RU', { month: 'short' }),
-            total: txns.reduce((s, t) => s + Number(t.amount), 0),
+            total: sumInCurrency(txns, dc, rates),
           }))
           .catch(() => ({ month: monthStr, total: 0 }))
       })
@@ -101,25 +105,25 @@ export const BudgetAnalyticsView: React.FC = () => {
   const defaultCurrency: Currency = budgetContext === 'personal' ? 'THB' : 'RUB'
 
   const totalSpent = useMemo(() =>
-    transactions.reduce((s, t) => s + Number(t.amount), 0),
-    [transactions])
+    sumInCurrency(transactions, defaultCurrency, exchangeRates),
+    [transactions, defaultCurrency, exchangeRates])
 
   const prevTotalSpent = useMemo(() =>
-    prevMonthTransactions.reduce((s, t) => s + Number(t.amount), 0),
-    [prevMonthTransactions])
+    sumInCurrency(prevMonthTransactions, defaultCurrency, exchangeRates),
+    [prevMonthTransactions, defaultCurrency, exchangeRates])
 
   const categoryTotals = useMemo(() => {
     const totals: Record<string, number> = {}
     for (const t of transactions) {
-      totals[t.category_id] = (totals[t.category_id] || 0) + Number(t.amount)
+      totals[t.category_id] = (totals[t.category_id] || 0) + convertAmount(Number(t.amount), t.currency, defaultCurrency, exchangeRates)
     }
     return totals
-  }, [transactions])
+  }, [transactions, defaultCurrency, exchangeRates])
 
   const prevCategoryTotals = useMemo(() => {
     const totals: Record<string, number> = {}
     for (const t of prevMonthTransactions) {
-      totals[t.category_id] = (totals[t.category_id] || 0) + Number(t.amount)
+      totals[t.category_id] = (totals[t.category_id] || 0) + convertAmount(Number(t.amount), t.currency, defaultCurrency, exchangeRates)
     }
     return totals
   }, [prevMonthTransactions])
@@ -215,7 +219,7 @@ export const BudgetAnalyticsView: React.FC = () => {
 
     for (const t of transactions) {
       const isMe = t.user_id === userId
-      const amount = Number(t.amount)
+      const amount = convertAmount(Number(t.amount), t.currency, defaultCurrency, exchangeRates)
       if (isMe) {
         myTotal += amount
         myCategoryTotals[t.category_id] = (myCategoryTotals[t.category_id] || 0) + amount
@@ -236,7 +240,7 @@ export const BudgetAnalyticsView: React.FC = () => {
       .slice(0, 3)
 
     return { myTotal, partnerTotal, grandTotal, myPct, partnerPct, topDiff }
-  }, [transactions, budgetContext, couple, userId, budgetCategories])
+  }, [transactions, budgetContext, couple, userId, budgetCategories, defaultCurrency, exchangeRates])
 
   // User names
   const myName = couple ? (userId === couple.user1_id ? couple.user1_name : couple.user2_name) || 'Я' : 'Я'

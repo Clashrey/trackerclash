@@ -7,6 +7,7 @@ import { useBudget, formatAmount } from '@/hooks/useBudget'
 import { BudgetContextSwitcher } from '@/components/BudgetContextSwitcher'
 import { AddTransactionSheet } from '@/components/budget/AddTransactionSheet'
 import { variants, transitions } from '@/lib/animations'
+import { sumInCurrency } from '@/lib/currency-rates'
 import type { Currency, Transaction } from '@/types/budget'
 
 function formatDayHeader(dateStr: string): string {
@@ -39,6 +40,7 @@ export const BudgetTransactionsView: React.FC = () => {
     transactions,
     budgetSelectedMonth,
     setBudgetSelectedMonth,
+    exchangeRates,
   } = useAppStore()
   const { addTransaction, deleteTransaction } = useBudget()
 
@@ -143,13 +145,13 @@ export const BudgetTransactionsView: React.FC = () => {
         date,
         label: formatDayHeader(date),
         transactions: txns,
-        total: txns.reduce((sum, t) => sum + Number(t.amount), 0),
+        total: sumInCurrency(txns, defaultCurrency, exchangeRates),
       }))
-  }, [filteredTransactions])
+  }, [filteredTransactions, defaultCurrency, exchangeRates])
 
   const totalFiltered = useMemo(() => {
-    return filteredTransactions.reduce((sum, t) => sum + Number(t.amount), 0)
-  }, [filteredTransactions])
+    return sumInCurrency(filteredTransactions, defaultCurrency, exchangeRates)
+  }, [filteredTransactions, defaultCurrency, exchangeRates])
 
   const monthLabel = useMemo(() => {
     const [y, m] = budgetSelectedMonth.split('-')

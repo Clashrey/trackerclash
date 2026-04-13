@@ -29,6 +29,8 @@ export function useBudget() {
     setAccounts,
     setRecurringExpenses,
     setExchangeRates,
+    setIncomeSources,
+    setMonthlyIncomes,
   } = useAppStore()
 
   const getState = () => useAppStore.getState()
@@ -51,7 +53,7 @@ export function useBudget() {
           context: budgetContext,
         }),
         budgetDatabaseService.getBudgetLimits(couple.id, budgetSelectedMonth),
-        budgetDatabaseService.getAccounts(couple.id),
+        budgetDatabaseService.getAccounts(couple.id, budgetContext),
         budgetDatabaseService.getRecurringExpenses(couple.id, budgetContext),
       ])
 
@@ -61,13 +63,24 @@ export function useBudget() {
       setAccounts(accounts)
       setRecurringExpenses(recurringExpenses)
 
+      // Load income data for work context
+      if (budgetContext === 'work') {
+        Promise.all([
+          budgetDatabaseService.getIncomeSources(couple.id),
+          budgetDatabaseService.getMonthlyIncomes(couple.id, budgetSelectedMonth),
+        ]).then(([sources, incomes]) => {
+          setIncomeSources(sources)
+          setMonthlyIncomes(incomes)
+        }).catch(() => {})
+      }
+
       // Load exchange rates (non-blocking)
       fetchExchangeRates().then(setExchangeRates).catch(() => {})
     } catch (error) {
       // error handled by toast
       toast.error('Не удалось загрузить данные бюджета')
     }
-  }, [setCouple, setBudgetCategories, setTransactions, setBudgetLimits, setAccounts, setRecurringExpenses, setExchangeRates])
+  }, [setCouple, setBudgetCategories, setTransactions, setBudgetLimits, setAccounts, setRecurringExpenses, setExchangeRates, setIncomeSources, setMonthlyIncomes])
 
   const reloadTransactions = useCallback(async () => {
     const { couple, budgetContext, budgetSelectedMonth } = getState()
@@ -350,13 +363,14 @@ export function useBudget() {
     currency: Currency
     balance: number
   }) => {
-    const { couple, accounts } = getState()
+    const { couple, accounts, budgetContext } = getState()
     if (!couple) return null
 
     try {
       const account = await budgetDatabaseService.addAccount(couple.id, {
         ...params,
         order_index: accounts.length,
+        context: budgetContext,
       })
       if (account) {
         setAccounts([...accounts, account])
@@ -495,6 +509,76 @@ export function useBudget() {
     }
   }, [setRecurringExpenses])
 
+  // ─── Income Sources ────────────────────────────────────
+
+  const addIncomeSource = useCallback(async (params: {
+    name: string
+    emoji: string
+  }) => {
+    const { couple } = getState()
+    if (!couple) return null
+
+    try {
+      const source = await budgetDatabaseService.addIncomeSource(couple.id, params)
+      if (source) {
+        const current = getState().incomeSources
+        setIncomeSources([...current, source])
+        toast.success(`Источник «${params.name}» добавлен`)
+      }
+      return source
+    } catch (error) {
+      toast.error('Не удалось добавить источник дохода')
+      throw error
+    }
+  }, [setIncomeSources])
+
+  const archiveIncomeSource = useCallback(async (id: string) => {
+    try {
+      const success = await budgetDatabaseService.archiveIncomeSource(id)
+      if (success) {
+        const current = getState().incomeSources
+        setIncomeSources(current.filter(s => s.id !== id))
+        toast('Источник дохода удалён')
+      }
+      return success
+    } catch (error) {
+      toast.error('Не удалось удалить источник дохода')
+      throw error
+    }
+  }, [setIncomeSources])
+
+  const setMonthlyIncome = useCallback(async (params: {
+    source_id: string
+    month: string
+    amount: number
+    currency: Currency
+  }) => {
+    const { couple } = getState()
+    if (!couple) return null
+
+    try {
+      const income = await budgetDatabaseService.upsertMonthlyIncome({
+        couple_id: couple.id,
+        ...params,
+      })
+      if (income) {
+        const current = getState().monthlyIncomes
+        const existingIdx = current.findIndex(
+          i => i.source_id === params.source_id && i.month === params.month
+        )
+        if (existingIdx >= 0) {
+          setMonthlyIncomes(current.map((i, idx) => idx === existingIdx ? income : i))
+        } else {
+          setMonthlyIncomes([...current, income])
+        }
+      }
+      return income
+    } catch (error) {
+      toast.error('Не удалось сохранить доход')
+      throw error
+    }
+  }, [setMonthlyIncomes])
+
   // ─── Balance ──────────────────────────────────────────
 
   const getCoupleBalance = useCallback(async () => {
@@ -533,6 +617,9 @@ export function useBudget() {
     updateRecurringExpense,
     deleteRecurringExpense,
     markExpensePaid,
+    addIncomeSource,
+    archiveIncomeSource,
+    setMonthlyIncome,
     formatAmount,
   }
 }

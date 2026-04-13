@@ -90,9 +90,29 @@ export interface Account {
   emoji: string
   currency: Currency
   balance: number
+  context: BudgetContext
   order_index: number
   is_archived: boolean
   created_at: string
+  updated_at: string
+}
+
+export interface IncomeSource {
+  id: string
+  couple_id: string
+  name: string
+  emoji: string
+  is_active: boolean
+  created_at: string
+}
+
+export interface MonthlyIncome {
+  id: string
+  couple_id: string
+  source_id: string
+  month: string
+  amount: number
+  currency: Currency
   updated_at: string
 }
 

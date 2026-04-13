@@ -1,6 +1,6 @@
 import { create } from 'zustand'
 import { Task, RecurringTask, TaskCategory, Subtask } from '@/types'
-import type { AppMode, BudgetContext, Couple, BudgetCategory, Transaction, BudgetLimit, ExchangeRate, Account, RecurringExpense } from '@/types/budget'
+import type { AppMode, BudgetContext, Couple, BudgetCategory, Transaction, BudgetLimit, ExchangeRate, Account, RecurringExpense, IncomeSource, MonthlyIncome } from '@/types/budget'
 
 interface TaskCompletion {
   id: string
@@ -80,6 +80,10 @@ interface AppState {
   setRecurringExpenses: (expenses: RecurringExpense[]) => void
   exchangeRates: ExchangeRate[]
   setExchangeRates: (rates: ExchangeRate[]) => void
+  incomeSources: IncomeSource[]
+  setIncomeSources: (sources: IncomeSource[]) => void
+  monthlyIncomes: MonthlyIncome[]
+  setMonthlyIncomes: (incomes: MonthlyIncome[]) => void
   budgetSelectedMonth: string
   setBudgetSelectedMonth: (month: string) => void
 }
@@ -169,6 +173,10 @@ export const useAppStore = create<AppState>((set, get) => ({
   setRecurringExpenses: (expenses) => set({ recurringExpenses: expenses }),
   exchangeRates: [],
   setExchangeRates: (rates) => set({ exchangeRates: rates }),
+  incomeSources: [],
+  setIncomeSources: (sources) => set({ incomeSources: sources }),
+  monthlyIncomes: [],
+  setMonthlyIncomes: (incomes) => set({ monthlyIncomes: incomes }),
   budgetSelectedMonth: (() => {
     const now = new Date()
     return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`

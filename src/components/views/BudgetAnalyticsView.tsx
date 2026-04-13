@@ -42,6 +42,8 @@ export const BudgetAnalyticsView: React.FC = () => {
     setBudgetSelectedMonth,
     userId,
     exchangeRates,
+    incomeSources,
+    monthlyIncomes,
   } = useAppStore()
 
   const [prevMonthTransactions, setPrevMonthTransactions] = useState<Transaction[]>([])
@@ -558,6 +560,65 @@ export const BudgetAnalyticsView: React.FC = () => {
               </div>
             )}
           </motion.div>
+
+          {/* ═══ BLOCK 6b: P&L (work only) ═══ */}
+          {budgetContext === 'work' && (() => {
+            const totalIncome = monthlyIncomes
+              .filter(i => incomeSources.some(s => s.id === i.source_id && s.is_active))
+              .reduce((sum, i) => sum + Number(i.amount), 0)
+            const totalExp = sumInCurrency(transactions, defaultCurrency, exchangeRates)
+            const profit = totalIncome - totalExp
+
+            if (totalIncome === 0 && totalExp === 0) return null
+
+            const plData = [
+              { name: 'Доход', value: totalIncome, fill: '#4ECDC4' },
+              { name: 'Расход', value: totalExp, fill: '#FF6B6B' },
+              { name: 'Прибыль', value: Math.abs(profit), fill: profit >= 0 ? '#45B7D1' : '#E74C3C' },
+            ]
+
+            return (
+              <motion.div
+                variants={variants.listItem}
+                transition={transitions.smooth}
+                className="p-4 rounded-xl bg-[var(--color-bg-elevated)] border border-[var(--color-border-primary)]"
+              >
+                <p className="text-xs text-[var(--color-text-tertiary)] mb-3">P&L за месяц</p>
+
+                <div className="h-[140px]">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <BarChart data={plData} layout="vertical" margin={{ left: 0, right: 10, top: 0, bottom: 0 }}>
+                      <XAxis type="number" hide />
+                      <YAxis type="category" dataKey="name" width={60} tick={{ fontSize: 12, fill: 'var(--color-text-secondary)' }} />
+                      <Tooltip
+                        formatter={(value: number) => formatAmount(value, defaultCurrency)}
+                        contentStyle={{
+                          backgroundColor: 'var(--color-bg-elevated)',
+                          border: '1px solid var(--color-border-primary)',
+                          borderRadius: '8px',
+                          fontSize: '12px',
+                        }}
+                      />
+                      <Bar dataKey="value" radius={[0, 4, 4, 0]}>
+                        {plData.map((entry, idx) => (
+                          <Cell key={idx} fill={entry.fill} />
+                        ))}
+                      </Bar>
+                    </BarChart>
+                  </ResponsiveContainer>
+                </div>
+
+                <div className="flex justify-between mt-2 text-sm">
+                  <span className="text-[var(--color-text-tertiary)]">
+                    {profit >= 0 ? 'Прибыль' : 'Убыток'}:
+                  </span>
+                  <span className={profit >= 0 ? 'text-green-600 dark:text-green-400 font-bold' : 'text-red-600 dark:text-red-400 font-bold'}>
+                    {profit >= 0 ? '+' : ''}{formatAmount(profit, defaultCurrency)}
+                  </span>
+                </div>
+              </motion.div>
+            )
+          })()}
 
           {/* ═══ BLOCK 6: Who spends (personal only) ═══ */}
           {userSplit && (

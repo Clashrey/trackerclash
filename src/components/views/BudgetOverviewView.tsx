@@ -12,6 +12,7 @@ import { AddTransactionSheet } from '@/components/budget/AddTransactionSheet'
 import { CategoryPicker } from '@/components/budget/CategoryPicker'
 import { variants, transitions } from '@/lib/animations'
 import { sumInCurrency, convertAmount } from '@/lib/currency-rates'
+import { ProfitLossCard } from '@/components/budget/ProfitLossCard'
 import type { Currency, RecurringExpenseType } from '@/types/budget'
 
 // ─── Helpers ──────────────────────────────────────────
@@ -578,6 +579,9 @@ export const BudgetOverviewView: React.FC = () => {
             </div>
           </div>
         </motion.div>
+
+        {/* ═══ P&L (work context only) ═══ */}
+        {budgetContext === 'work' && <ProfitLossCard />}
 
         {/* ═══ RECURRING EXPENSES ═══ */}
         <motion.div

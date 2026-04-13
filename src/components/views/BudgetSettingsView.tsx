@@ -1,8 +1,8 @@
 import React, { useEffect, useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Plus, Archive, Copy, Users, Link2 } from 'lucide-react'
+import { Plus, Archive, Copy, Users, Link2, Trash2 } from 'lucide-react'
 import { useAppStore } from '@/store'
-import { useBudget, CURRENCY_SYMBOLS } from '@/hooks/useBudget'
+import { useBudget, formatAmount, CURRENCY_SYMBOLS } from '@/hooks/useBudget'
 import { BudgetContextSwitcher } from '@/components/BudgetContextSwitcher'
 import { variants, transitions } from '@/lib/animations'
 import type { Currency, BudgetCategory } from '@/types/budget'
@@ -32,6 +32,8 @@ export const BudgetSettingsView: React.FC = () => {
     budgetCategories,
     budgetLimits,
     budgetSelectedMonth,
+    incomeSources,
+    monthlyIncomes,
   } = useAppStore()
   const {
     createCouple,
@@ -41,6 +43,9 @@ export const BudgetSettingsView: React.FC = () => {
     archiveCategory,
     setBudgetLimit,
     copyLimitsFromPrevMonth,
+    addIncomeSource,
+    archiveIncomeSource,
+    setMonthlyIncome,
   } = useBudget()
 
   const [inviteInput, setInviteInput] = useState('')
@@ -58,6 +63,15 @@ export const BudgetSettingsView: React.FC = () => {
   // Limits
   const [limitInputs, setLimitInputs] = useState<Record<string, string>>({})
 
+  // Income sources
+  const [showAddSource, setShowAddSource] = useState(false)
+  const [sourceName, setSourceName] = useState('')
+  const [sourceEmoji, setSourceEmoji] = useState('💼')
+  const [incomeInputs, setIncomeInputs] = useState<Record<string, string>>({})
+  const [editingIncomeId, setEditingIncomeId] = useState<string | null>(null)
+
+  const INCOME_EMOJIS = ['💼', '🏢', '💻', '📊', '🎯', '📝', '🛠️', '🎨', '📱', '🌐']
+
   const defaultCurrency: Currency = budgetContext === 'personal' ? 'THB' : 'RUB'
 
   useEffect(() => {
@@ -67,6 +81,34 @@ export const BudgetSettingsView: React.FC = () => {
     }
     setLimitInputs(inputs)
   }, [budgetLimits])
+
+  useEffect(() => {
+    const inputs: Record<string, string> = {}
+    for (const inc of monthlyIncomes) {
+      inputs[inc.source_id] = String(inc.amount)
+    }
+    setIncomeInputs(inputs)
+  }, [monthlyIncomes])
+
+  const handleAddSource = async () => {
+    if (!sourceName.trim()) return
+    await addIncomeSource({ name: sourceName.trim(), emoji: sourceEmoji })
+    setSourceName('')
+    setSourceEmoji('💼')
+    setShowAddSource(false)
+  }
+
+  const handleSaveIncome = async (sourceId: string) => {
+    const val = parseFloat(incomeInputs[sourceId] || '0')
+    if (val <= 0) return
+    await setMonthlyIncome({
+      source_id: sourceId,
+      month: budgetSelectedMonth,
+      amount: val,
+      currency: defaultCurrency,
+    })
+    setEditingIncomeId(null)
+  }
 
   const handleCreateCouple = async () => {
     setCreatingCouple(true)
@@ -375,6 +417,121 @@ export const BudgetSettingsView: React.FC = () => {
               </div>
             ))}
           </div>
+        </motion.div>
+      )}
+
+      {/* Income sources (work context only) */}
+      {couple && budgetContext === 'work' && (
+        <motion.div
+          variants={variants.listItem}
+          initial="hidden"
+          animate="visible"
+          transition={transitions.smooth}
+          className="p-4 rounded-xl bg-[var(--color-bg-elevated)] border border-[var(--color-border-primary)] space-y-3"
+        >
+          <p className="text-sm font-medium text-[var(--color-text-primary)]">Источники дохода</p>
+
+          <div className="space-y-2">
+            {incomeSources.filter(s => s.is_active).map(source => {
+              const monthlyIncome = monthlyIncomes.find(i => i.source_id === source.id)
+              const isEditing = editingIncomeId === source.id
+
+              return (
+                <div key={source.id} className="flex items-center gap-2 group">
+                  <span className="text-sm">{source.emoji}</span>
+                  <span className="text-sm text-[var(--color-text-primary)] flex-1 truncate">
+                    {source.name}
+                  </span>
+
+                  {isEditing ? (
+                    <input
+                      type="text"
+                      inputMode="decimal"
+                      autoFocus
+                      placeholder="0"
+                      value={incomeInputs[source.id] || ''}
+                      onChange={(e) => {
+                        const val = e.target.value.replace(/[^0-9.,]/g, '').replace(',', '.')
+                        setIncomeInputs(prev => ({ ...prev, [source.id]: val }))
+                      }}
+                      onBlur={() => handleSaveIncome(source.id)}
+                      onKeyDown={(e) => { if (e.key === 'Enter') handleSaveIncome(source.id) }}
+                      className="w-28 px-2 py-1 rounded-lg bg-[var(--color-bg-tertiary)] text-[var(--color-text-primary)] text-sm text-right outline-none"
+                    />
+                  ) : (
+                    <button
+                      onClick={() => setEditingIncomeId(source.id)}
+                      className="text-sm text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)] transition-colors"
+                    >
+                      {monthlyIncome
+                        ? formatAmount(Number(monthlyIncome.amount), monthlyIncome.currency)
+                        : `0 ${CURRENCY_SYMBOLS[defaultCurrency]}`}
+                    </button>
+                  )}
+
+                  <button
+                    onClick={() => archiveIncomeSource(source.id)}
+                    className="p-1 rounded text-[var(--color-text-tertiary)] hover:text-[var(--color-danger)] opacity-0 group-hover:opacity-100 transition-all"
+                    title="Удалить"
+                  >
+                    <Trash2 size={12} />
+                  </button>
+                </div>
+              )
+            })}
+          </div>
+
+          <AnimatePresence>
+            {showAddSource && (
+              <motion.div
+                initial={{ opacity: 0, height: 0 }}
+                animate={{ opacity: 1, height: 'auto' }}
+                exit={{ opacity: 0, height: 0 }}
+                transition={transitions.smooth}
+                className="space-y-2 pt-2 border-t border-[var(--color-border-secondary)]"
+              >
+                <div className="flex items-center gap-2">
+                  <div className="flex gap-1 flex-wrap">
+                    {INCOME_EMOJIS.map(e => (
+                      <button
+                        key={e}
+                        onClick={() => setSourceEmoji(e)}
+                        className={`text-lg p-0.5 rounded ${sourceEmoji === e ? 'bg-[var(--color-accent-10)]' : ''}`}
+                      >
+                        {e}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+                <div className="flex gap-2">
+                  <input
+                    type="text"
+                    placeholder="Название источника"
+                    value={sourceName}
+                    onChange={(e) => setSourceName(e.target.value)}
+                    className="flex-1 px-3 py-1.5 rounded-lg bg-[var(--color-bg-tertiary)] text-[var(--color-text-primary)] text-sm outline-none"
+                  />
+                  <button
+                    onClick={handleAddSource}
+                    disabled={!sourceName.trim()}
+                    className="px-4 py-1.5 rounded-lg bg-[var(--color-accent)] text-white text-sm font-medium disabled:opacity-50"
+                  >
+                    Добавить
+                  </button>
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
+
+          {!showAddSource && (
+            <button
+              onClick={() => setShowAddSource(true)}
+              className="flex items-center gap-1.5 text-sm text-[var(--color-accent)] hover:text-[var(--color-accent-hover)]"
+            >
+              <Plus size={14} />
+              Добавить источник
+            </button>
+          )}
         </motion.div>
       )}
     </div>

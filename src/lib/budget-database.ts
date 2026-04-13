@@ -11,6 +11,8 @@ import type {
   BudgetContext,
   Currency,
   TransactionType,
+  IncomeSource,
+  MonthlyIncome,
 } from '../types/budget'
 
 interface TransactionFilters {
@@ -686,15 +688,20 @@ class BudgetDatabaseService {
 
   // ─── Accounts ─────────────────────────────────────────
 
-  async getAccounts(coupleId: string): Promise<Account[]> {
+  async getAccounts(coupleId: string, context?: BudgetContext): Promise<Account[]> {
     try {
-      const { data, error } = await supabase
+      let query = supabase
         .from('accounts')
         .select('*')
         .eq('couple_id', coupleId)
         .eq('is_archived', false)
         .order('order_index')
 
+      if (context) {
+        query = query.eq('context', context)
+      }
+
+      const { data, error } = await query
       if (error) throw new Error(`getAccounts failed: ${error.message}`)
       return data || []
     } catch (error) {
@@ -705,15 +712,16 @@ class BudgetDatabaseService {
 
   async addAccount(
     coupleId: string,
-    params: { name: string; emoji: string; currency: Currency; balance: number; order_index: number }
+    params: { name: string; emoji: string; currency: Currency; balance: number; order_index: number; context?: BudgetContext }
   ): Promise<Account | null> {
     const userId = this.getCurrentUserId()
     if (!userId) return null
 
     try {
+      const { context = 'personal', ...rest } = params
       const { data, error } = await supabase
         .from('accounts')
-        .insert([{ couple_id: coupleId, user_id: userId, ...params }])
+        .insert([{ couple_id: coupleId, user_id: userId, context, ...rest }])
         .select()
         .single()
 
@@ -756,6 +764,90 @@ class BudgetDatabaseService {
       return true
     } catch (error) {
       console.error('deleteAccount error:', error)
+      throw error
+    }
+  }
+
+  // ─── Income Sources ───────────────────────────────────
+
+  async getIncomeSources(coupleId: string): Promise<IncomeSource[]> {
+    try {
+      const { data, error } = await supabase
+        .from('income_sources')
+        .select('*')
+        .eq('couple_id', coupleId)
+        .eq('is_active', true)
+        .order('created_at')
+
+      if (error) throw new Error(`getIncomeSources failed: ${error.message}`)
+      return data || []
+    } catch (error) {
+      throw error
+    }
+  }
+
+  async addIncomeSource(coupleId: string, params: { name: string; emoji: string }): Promise<IncomeSource | null> {
+    try {
+      const { data, error } = await supabase
+        .from('income_sources')
+        .insert([{ couple_id: coupleId, ...params }])
+        .select()
+        .single()
+
+      if (error) throw new Error(`addIncomeSource failed: ${error.message}`)
+      return data
+    } catch (error) {
+      throw error
+    }
+  }
+
+  async archiveIncomeSource(id: string): Promise<boolean> {
+    try {
+      const { error } = await supabase
+        .from('income_sources')
+        .update({ is_active: false })
+        .eq('id', id)
+
+      if (error) throw new Error(`archiveIncomeSource failed: ${error.message}`)
+      return true
+    } catch (error) {
+      throw error
+    }
+  }
+
+  // ─── Monthly Incomes ─────────────────────────────────
+
+  async getMonthlyIncomes(coupleId: string, month: string): Promise<MonthlyIncome[]> {
+    try {
+      const { data, error } = await supabase
+        .from('monthly_incomes')
+        .select('*')
+        .eq('couple_id', coupleId)
+        .eq('month', month)
+
+      if (error) throw new Error(`getMonthlyIncomes failed: ${error.message}`)
+      return data || []
+    } catch (error) {
+      throw error
+    }
+  }
+
+  async upsertMonthlyIncome(params: {
+    couple_id: string; source_id: string; month: string; amount: number; currency: Currency
+  }): Promise<MonthlyIncome | null> {
+    try {
+      const { data, error } = await supabase
+        .from('monthly_incomes')
+        .upsert(
+          [{ ...params, updated_at: new Date().toISOString() }],
+          { onConflict: 'source_id,month' }
+        )
+        .select()
+        .single()
+
+      if (error) throw new Error(`upsertMonthlyIncome failed: ${error.message}`)
+      return data
+    } catch (error) {
       throw error
     }
   }

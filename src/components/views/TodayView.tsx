@@ -11,9 +11,10 @@ import { EmptyState } from '../ui/EmptyState'
 
 export function TodayView() {
   const { tasks, recurringTasks, selectedDate, taskCompletions, subtasks } = useAppStore()
-  const { updateTask, deleteTask, addTaskCompletion, removeTaskCompletion, addSubtask, updateSubtask, deleteSubtask, syncTaskCompletion, rescheduleTask } = useDatabase()
+  const { updateTask, deleteTask, addTaskCompletion, removeTaskCompletion, addSubtask, updateSubtask, deleteSubtask, syncTaskCompletion, rescheduleTask, copyTaskToToday } = useDatabase()
 
   const [rescheduleTaskId, setRescheduleTaskId] = useState<string | null>(null)
+  const [pickTaskId, setPickTaskId] = useState<string | null>(null)
   const [randomSeed, setRandomSeed] = useState(0)
 
   const todayTasks = tasks
@@ -142,6 +143,13 @@ export function TodayView() {
     }
   }, [rescheduleTaskId, rescheduleTask])
 
+  const handlePickDateSelect = useCallback(async (date: string) => {
+    if (pickTaskId) {
+      await copyTaskToToday(pickTaskId, date)
+      setPickTaskId(null)
+    }
+  }, [pickTaskId, copyTaskToToday])
+
   return (
     <div className="space-y-6">
       <DateNavigation />
@@ -172,10 +180,10 @@ export function TodayView() {
           <div className="flex items-center justify-between gap-2">
             <p className="text-sm text-[var(--color-text-primary)] flex-1 truncate">{randomTask.title}</p>
             <button
-              onClick={() => setRescheduleTaskId(randomTask.id)}
+              onClick={() => setPickTaskId(randomTask.id)}
               className="flex-shrink-0 px-2.5 py-1 rounded-md bg-[var(--color-accent)] text-white text-xs font-medium hover:bg-[var(--color-accent-hover)] transition-colors"
             >
-              Взять
+              Запланировать
             </button>
           </div>
         </div>
@@ -261,6 +269,13 @@ export function TodayView() {
         onClose={() => setRescheduleTaskId(null)}
         onSelect={handleRescheduleDateSelect}
         title="Перенести на другой день"
+      />
+
+      <DatePickerModal
+        isOpen={pickTaskId !== null}
+        onClose={() => setPickTaskId(null)}
+        onSelect={handlePickDateSelect}
+        title="На какой день запланировать?"
       />
     </div>
   )

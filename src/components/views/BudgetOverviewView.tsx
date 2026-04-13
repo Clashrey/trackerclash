@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import {
-  Plus, X, Wallet, TrendingDown, ChevronRight, ChevronDown, ChevronUp,
+  Plus, X, Wallet, TrendingDown, ChevronRight, ChevronLeft, ChevronDown, ChevronUp,
   CalendarClock, Trash2, Check, Bell, Banknote,
 } from 'lucide-react'
 import { useAppStore } from '@/store'
@@ -115,8 +115,10 @@ export const BudgetOverviewView: React.FC = () => {
     incomeSources,
     monthlyIncomes,
     budgetSelectedMonth,
+    setBudgetSelectedMonth,
   } = useAppStore()
   const {
+    loadBudgetData,
     addAccount,
     updateAccount,
     deleteAccount,
@@ -175,6 +177,23 @@ export const BudgetOverviewView: React.FC = () => {
   }, [couple, transactions])
 
   const defaultCurrency: Currency = budgetContext === 'personal' ? 'THB' : 'RUB'
+
+  // ─── Month navigation ──────────────────────────────
+
+  const monthLabel = useMemo(() => {
+    const [y, m] = budgetSelectedMonth.split('-')
+    const date = new Date(Number(y), Number(m) - 1)
+    return date.toLocaleDateString('ru-RU', { month: 'long', year: 'numeric' })
+  }, [budgetSelectedMonth])
+
+  const navigateMonth = (delta: number) => {
+    const [y, m] = budgetSelectedMonth.split('-').map(Number)
+    const d = new Date(y, m - 1 + delta, 1)
+    const newMonth = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`
+    setBudgetSelectedMonth(newMonth)
+    // Reload data for new month
+    setTimeout(() => loadBudgetData(), 0)
+  }
 
   // ─── Spending calculations ──────────────────────────
 
@@ -385,6 +404,25 @@ export const BudgetOverviewView: React.FC = () => {
       <div className="flex items-center justify-between">
         <h2 className="text-lg font-semibold text-[var(--color-text-primary)]">Обзор</h2>
         <BudgetContextSwitcher />
+      </div>
+
+      {/* Month navigation */}
+      <div className="flex items-center justify-center gap-4">
+        <button
+          onClick={() => navigateMonth(-1)}
+          className="p-1.5 rounded-lg hover:bg-[var(--color-bg-tertiary)] text-[var(--color-text-secondary)]"
+        >
+          <ChevronLeft size={18} />
+        </button>
+        <span className="text-sm font-medium text-[var(--color-text-primary)] capitalize min-w-[140px] text-center">
+          {monthLabel}
+        </span>
+        <button
+          onClick={() => navigateMonth(1)}
+          className="p-1.5 rounded-lg hover:bg-[var(--color-bg-tertiary)] text-[var(--color-text-secondary)]"
+        >
+          <ChevronRight size={18} />
+        </button>
       </div>
 
       {/* ═══ DUE BILLS NOTIFICATION ═══ */}
@@ -681,7 +719,7 @@ export const BudgetOverviewView: React.FC = () => {
             <div className="flex items-center justify-between mb-3">
               <div className="flex items-center gap-2">
                 <Banknote size={14} className="text-green-600 dark:text-green-400" />
-                <p className="text-xs font-medium text-[var(--color-text-tertiary)] uppercase tracking-wide">Доходы</p>
+                <p className="text-xs font-medium text-[var(--color-text-tertiary)] uppercase tracking-wide">Доходы за {monthLabel}</p>
               </div>
               <button
                 onClick={() => setShowAddSource(true)}

@@ -94,6 +94,24 @@ export interface Account {
 }
 
 /**
+ * Фиксированный обязательный расход (подписка, аренда и т.д.)
+ */
+export interface RecurringExpense {
+  id: string
+  couple_id: string
+  user_id: string
+  name: string
+  emoji: string
+  amount: number
+  currency: Currency
+  day_of_month: number // 1-31
+  category_id: string | null
+  is_active: boolean
+  created_at: string
+  updated_at: string
+}
+
+/**
  * Курс обмена между валютами
  */
 export interface ExchangeRate {

@@ -26,6 +26,7 @@ export function useBudget() {
     setTransactions,
     setBudgetLimits,
     setAccounts,
+    setRecurringExpenses,
   } = useAppStore()
 
   const getState = () => useAppStore.getState()
@@ -41,7 +42,7 @@ export function useBudget() {
 
       const { budgetContext, budgetSelectedMonth } = getState()
 
-      const [categories, transactions, limits, accounts] = await Promise.all([
+      const [categories, transactions, limits, accounts, recurringExpenses] = await Promise.all([
         budgetDatabaseService.getCategories(couple.id, budgetContext),
         budgetDatabaseService.getTransactions(couple.id, {
           month: budgetSelectedMonth,
@@ -49,17 +50,19 @@ export function useBudget() {
         }),
         budgetDatabaseService.getBudgetLimits(couple.id, budgetSelectedMonth),
         budgetDatabaseService.getAccounts(couple.id),
+        budgetDatabaseService.getRecurringExpenses(couple.id),
       ])
 
       setBudgetCategories(categories)
       setTransactions(transactions)
       setBudgetLimits(limits)
       setAccounts(accounts)
+      setRecurringExpenses(recurringExpenses)
     } catch (error) {
       console.error('loadBudgetData failed:', error)
       toast.error('Не удалось загрузить данные бюджета')
     }
-  }, [setCouple, setBudgetCategories, setTransactions, setBudgetLimits, setAccounts])
+  }, [setCouple, setBudgetCategories, setTransactions, setBudgetLimits, setAccounts, setRecurringExpenses])
 
   const reloadTransactions = useCallback(async () => {
     const { couple, budgetContext, budgetSelectedMonth } = getState()
@@ -398,6 +401,70 @@ export function useBudget() {
     }
   }, [setAccounts])
 
+  // ─── Recurring Expenses ────────────────────────────────
+
+  const addRecurringExpense = useCallback(async (params: {
+    name: string
+    emoji: string
+    amount: number
+    currency: Currency
+    day_of_month: number
+    category_id?: string | null
+  }) => {
+    const { couple, recurringExpenses } = getState()
+    if (!couple) return null
+
+    try {
+      const expense = await budgetDatabaseService.addRecurringExpense(couple.id, params)
+      if (expense) {
+        setRecurringExpenses([...recurringExpenses, expense])
+        toast.success(`Расход «${params.name}» добавлен`)
+      }
+      return expense
+    } catch (error) {
+      console.error('addRecurringExpense failed:', error)
+      toast.error('Не удалось добавить расход')
+      throw error
+    }
+  }, [setRecurringExpenses])
+
+  const updateRecurringExpense = useCallback(async (id: string, updates: {
+    name?: string
+    emoji?: string
+    amount?: number
+    currency?: Currency
+    day_of_month?: number
+  }) => {
+    try {
+      const expense = await budgetDatabaseService.updateRecurringExpense(id, updates)
+      if (expense) {
+        const current = getState().recurringExpenses
+        setRecurringExpenses(current.map(e => e.id === id ? expense : e))
+      }
+      return expense
+    } catch (error) {
+      console.error('updateRecurringExpense failed:', error)
+      toast.error('Не удалось обновить расход')
+      throw error
+    }
+  }, [setRecurringExpenses])
+
+  const deleteRecurringExpense = useCallback(async (id: string) => {
+    try {
+      const success = await budgetDatabaseService.deleteRecurringExpense(id)
+      if (success) {
+        const current = getState().recurringExpenses
+        setRecurringExpenses(current.filter(e => e.id !== id))
+        toast('Расход удалён')
+      }
+      return success
+    } catch (error) {
+      console.error('deleteRecurringExpense failed:', error)
+      toast.error('Не удалось удалить расход')
+      throw error
+    }
+  }, [setRecurringExpenses])
+
   // ─── Balance ──────────────────────────────────────────
 
   const getCoupleBalance = useCallback(async () => {
@@ -432,6 +499,9 @@ export function useBudget() {
     addAccount,
     updateAccount,
     deleteAccount,
+    addRecurringExpense,
+    updateRecurringExpense,
+    deleteRecurringExpense,
     formatAmount,
   }
 }

@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Plus, X, Wallet, TrendingDown, ChevronRight } from 'lucide-react'
+import { Plus, X, Wallet, TrendingDown, ChevronRight, CalendarClock, Trash2 } from 'lucide-react'
 import { useAppStore } from '@/store'
 import { useBudget, formatAmount, CURRENCY_SYMBOLS } from '@/hooks/useBudget'
 import { BudgetContextSwitcher } from '@/components/BudgetContextSwitcher'
@@ -36,6 +36,7 @@ function getTodayStr(): string {
 }
 
 const ACCOUNT_EMOJIS = ['🏦', '💳', '💰', '🪙', '📱', '🏧', '💵', '🐖', '🔐', '🏠']
+const EXPENSE_EMOJIS = ['📅', '🔄', '🏠', '🏍️', '📱', '💡', '🎬', '🏋️', '☁️', '🎵', '📦', '🛡️']
 
 // ─── Component ────────────────────────────────────────
 
@@ -47,6 +48,7 @@ export const BudgetOverviewView: React.FC = () => {
     transactions,
     budgetLimits,
     accounts,
+    recurringExpenses,
     userId,
   } = useAppStore()
   const {
@@ -54,6 +56,9 @@ export const BudgetOverviewView: React.FC = () => {
     addAccount,
     updateAccount,
     deleteAccount,
+    addRecurringExpense,
+    updateRecurringExpense,
+    deleteRecurringExpense,
   } = useBudget()
 
   const [showAddAccount, setShowAddAccount] = useState(false)
@@ -63,6 +68,16 @@ export const BudgetOverviewView: React.FC = () => {
   const [newAccountCurrency, setNewAccountCurrency] = useState<Currency>('THB')
   const [editingAccountId, setEditingAccountId] = useState<string | null>(null)
   const [editBalance, setEditBalance] = useState('')
+
+  // Recurring expenses form
+  const [showAddExpense, setShowAddExpense] = useState(false)
+  const [expName, setExpName] = useState('')
+  const [expEmoji, setExpEmoji] = useState('📅')
+  const [expAmount, setExpAmount] = useState('')
+  const [expCurrency, setExpCurrency] = useState<Currency>('THB')
+  const [expDay, setExpDay] = useState('')
+  const [editingExpenseId, setEditingExpenseId] = useState<string | null>(null)
+  const [editExpAmount, setEditExpAmount] = useState('')
 
   useEffect(() => {
     loadBudgetData()
@@ -127,6 +142,23 @@ export const BudgetOverviewView: React.FC = () => {
   )
   const totalBalance = myBalance + partnerBalance
 
+  // ─── Recurring expenses ─────────────────────────────
+
+  const totalRecurring = useMemo(() =>
+    recurringExpenses.reduce((sum, e) => sum + Number(e.amount), 0),
+    [recurringExpenses]
+  )
+
+  const upcomingExpenses = useMemo(() => {
+    const todayDay = new Date().getDate()
+    const sorted = [...recurringExpenses].sort((a, b) => {
+      const aNext = a.day_of_month >= todayDay ? a.day_of_month - todayDay : a.day_of_month + 31 - todayDay
+      const bNext = b.day_of_month >= todayDay ? b.day_of_month - todayDay : b.day_of_month + 31 - todayDay
+      return aNext - bNext
+    })
+    return sorted
+  }, [recurringExpenses])
+
   // ─── Recent transactions ────────────────────────────
 
   const recentTransactions = transactions.slice(0, 5)
@@ -157,6 +189,32 @@ export const BudgetOverviewView: React.FC = () => {
     setNewAccountEmoji('🏦')
     setNewAccountBalance('')
     setShowAddAccount(false)
+  }
+
+  const handleAddExpense = async () => {
+    const amount = parseFloat(expAmount.replace(',', '.'))
+    const day = parseInt(expDay)
+    if (!expName.trim() || isNaN(amount) || isNaN(day) || day < 1 || day > 31) return
+
+    await addRecurringExpense({
+      name: expName.trim(),
+      emoji: expEmoji,
+      amount,
+      currency: expCurrency,
+      day_of_month: day,
+    })
+    setExpName('')
+    setExpEmoji('📅')
+    setExpAmount('')
+    setExpDay('')
+    setShowAddExpense(false)
+  }
+
+  const handleUpdateExpenseAmount = async (id: string) => {
+    const val = parseFloat(editExpAmount.replace(',', '.'))
+    if (isNaN(val)) return
+    await updateRecurringExpense(id, { amount: val })
+    setEditingExpenseId(null)
   }
 
   const handleUpdateBalance = async (accountId: string) => {
@@ -392,6 +450,169 @@ export const BudgetOverviewView: React.FC = () => {
             >
               <Plus size={12} />
               Добавить счёт
+            </button>
+          )}
+        </motion.div>
+
+        {/* ═══ RECURRING EXPENSES ═══ */}
+        <motion.div
+          variants={variants.listItem}
+          transition={transitions.smooth}
+          className="p-4 rounded-xl bg-[var(--color-bg-elevated)] border border-[var(--color-border-primary)]"
+        >
+          <div className="flex items-center justify-between mb-3">
+            <div className="flex items-center gap-2">
+              <CalendarClock size={14} className="text-[var(--color-text-tertiary)]" />
+              <p className="text-xs font-medium text-[var(--color-text-tertiary)] uppercase tracking-wide">
+                Обязательные расходы
+              </p>
+            </div>
+            {recurringExpenses.length > 0 && (
+              <span className="text-xs font-semibold text-[var(--color-text-secondary)]">
+                {formatAmount(totalRecurring, defaultCurrency)}/мес
+              </span>
+            )}
+          </div>
+
+          {/* List */}
+          {upcomingExpenses.length > 0 && (
+            <div className="space-y-1.5 mb-3">
+              {upcomingExpenses.map(exp => {
+                const todayDay = new Date().getDate()
+                const isPast = exp.day_of_month < todayDay
+                return (
+                  <div key={exp.id} className="flex items-center justify-between py-1.5 group">
+                    <div className="flex items-center gap-2">
+                      <span className="text-base">{exp.emoji}</span>
+                      <div>
+                        <span className="text-sm text-[var(--color-text-primary)]">{exp.name}</span>
+                        <p className="text-[10px] text-[var(--color-text-tertiary)]">
+                          {exp.day_of_month}-е число
+                          {isPast && ' (оплачено)'}
+                        </p>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-1">
+                      {editingExpenseId === exp.id ? (
+                        <input
+                          type="text"
+                          inputMode="decimal"
+                          value={editExpAmount}
+                          onChange={(e) => setEditExpAmount(e.target.value.replace(/[^0-9.,]/g, '').replace(',', '.'))}
+                          onBlur={() => handleUpdateExpenseAmount(exp.id)}
+                          onKeyDown={(e) => { if (e.key === 'Enter') handleUpdateExpenseAmount(exp.id) }}
+                          autoFocus
+                          className="w-24 px-2 py-0.5 rounded bg-[var(--color-bg-tertiary)] text-sm text-right text-[var(--color-text-primary)] outline-none"
+                        />
+                      ) : (
+                        <button
+                          onClick={() => { setEditingExpenseId(exp.id); setEditExpAmount(String(exp.amount)) }}
+                          className={`text-sm font-medium transition-colors hover:text-[var(--color-accent)] ${
+                            isPast ? 'text-[var(--color-text-tertiary)]' : 'text-[var(--color-text-primary)]'
+                          }`}
+                        >
+                          {formatAmount(Number(exp.amount), exp.currency)}
+                        </button>
+                      )}
+                      <button
+                        onClick={() => deleteRecurringExpense(exp.id)}
+                        className="p-0.5 rounded text-[var(--color-text-tertiary)] hover:text-[var(--color-danger)] opacity-0 group-hover:opacity-100 transition-all"
+                      >
+                        <Trash2 size={12} />
+                      </button>
+                    </div>
+                  </div>
+                )
+              })}
+            </div>
+          )}
+
+          {/* Add form */}
+          <AnimatePresence>
+            {showAddExpense && (
+              <motion.div
+                initial={{ opacity: 0, height: 0 }}
+                animate={{ opacity: 1, height: 'auto' }}
+                exit={{ opacity: 0, height: 0 }}
+                transition={transitions.smooth}
+                className="space-y-2 pt-2 border-t border-[var(--color-border-secondary)]"
+              >
+                <div className="flex gap-1.5 flex-wrap">
+                  {EXPENSE_EMOJIS.map(e => (
+                    <button
+                      key={e}
+                      onClick={() => setExpEmoji(e)}
+                      className={`text-lg p-1 rounded ${expEmoji === e ? 'bg-[var(--color-accent-10)]' : 'hover:bg-[var(--color-bg-tertiary)]'}`}
+                    >
+                      {e}
+                    </button>
+                  ))}
+                </div>
+                <div className="flex gap-2">
+                  <input
+                    type="text"
+                    placeholder="Название"
+                    value={expName}
+                    onChange={(e) => setExpName(e.target.value)}
+                    className="flex-1 px-3 py-1.5 rounded-lg bg-[var(--color-bg-tertiary)] text-[var(--color-text-primary)] text-sm outline-none"
+                  />
+                </div>
+                <div className="flex gap-2">
+                  <input
+                    type="text"
+                    inputMode="decimal"
+                    placeholder="Сумма"
+                    value={expAmount}
+                    onChange={(e) => setExpAmount(e.target.value.replace(/[^0-9.,]/g, '').replace(',', '.'))}
+                    className="flex-1 px-3 py-1.5 rounded-lg bg-[var(--color-bg-tertiary)] text-[var(--color-text-primary)] text-sm text-right outline-none"
+                  />
+                  <input
+                    type="text"
+                    inputMode="numeric"
+                    placeholder="День"
+                    value={expDay}
+                    onChange={(e) => {
+                      const v = e.target.value.replace(/\D/g, '')
+                      if (v === '' || (Number(v) >= 1 && Number(v) <= 31)) setExpDay(v)
+                    }}
+                    className="w-16 px-3 py-1.5 rounded-lg bg-[var(--color-bg-tertiary)] text-[var(--color-text-primary)] text-sm text-center outline-none"
+                  />
+                  <select
+                    value={expCurrency}
+                    onChange={(e) => setExpCurrency(e.target.value as Currency)}
+                    className="px-2 py-1.5 rounded-lg bg-[var(--color-bg-tertiary)] text-[var(--color-text-primary)] text-sm outline-none"
+                  >
+                    {(['THB', 'RUB', 'USD', 'EUR'] as Currency[]).map(c => (
+                      <option key={c} value={c}>{CURRENCY_SYMBOLS[c]}</option>
+                    ))}
+                  </select>
+                </div>
+                <div className="flex gap-2">
+                  <button
+                    onClick={handleAddExpense}
+                    disabled={!expName.trim() || !expAmount || !expDay}
+                    className="flex-1 py-1.5 rounded-lg bg-[var(--color-accent)] text-white text-sm font-medium disabled:opacity-50"
+                  >
+                    Добавить
+                  </button>
+                  <button
+                    onClick={() => setShowAddExpense(false)}
+                    className="px-3 py-1.5 rounded-lg bg-[var(--color-bg-tertiary)] text-[var(--color-text-secondary)] text-sm"
+                  >
+                    Отмена
+                  </button>
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
+
+          {!showAddExpense && (
+            <button
+              onClick={() => setShowAddExpense(true)}
+              className="flex items-center gap-1.5 text-xs text-[var(--color-accent)] hover:text-[var(--color-accent-hover)] mt-1"
+            >
+              <Plus size={12} />
+              Добавить расход
             </button>
           )}
         </motion.div>

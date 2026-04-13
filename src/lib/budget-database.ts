@@ -6,6 +6,7 @@ import type {
   Transaction,
   BudgetLimit,
   Account,
+  RecurringExpense,
   BudgetContext,
   Currency,
   TransactionType,
@@ -487,6 +488,82 @@ class BudgetDatabaseService {
       return { user1Total, user2Total }
     } catch (error) {
       console.error('getCoupleBalance error:', error)
+      throw error
+    }
+  }
+
+  // ─── Recurring Expenses ────────────────────────────────
+
+  async getRecurringExpenses(coupleId: string): Promise<RecurringExpense[]> {
+    try {
+      const { data, error } = await supabase
+        .from('recurring_expenses')
+        .select('*')
+        .eq('couple_id', coupleId)
+        .eq('is_active', true)
+        .order('day_of_month')
+
+      if (error) throw new Error(`getRecurringExpenses failed: ${error.message}`)
+      return data || []
+    } catch (error) {
+      console.error('getRecurringExpenses error:', error)
+      throw error
+    }
+  }
+
+  async addRecurringExpense(
+    coupleId: string,
+    params: { name: string; emoji: string; amount: number; currency: Currency; day_of_month: number; category_id?: string | null }
+  ): Promise<RecurringExpense | null> {
+    const userId = this.getCurrentUserId()
+    if (!userId) return null
+
+    try {
+      const { data, error } = await supabase
+        .from('recurring_expenses')
+        .insert([{ couple_id: coupleId, user_id: userId, ...params }])
+        .select()
+        .single()
+
+      if (error) throw new Error(`addRecurringExpense failed: ${error.message}`)
+      return data
+    } catch (error) {
+      console.error('addRecurringExpense error:', error)
+      throw error
+    }
+  }
+
+  async updateRecurringExpense(
+    id: string,
+    updates: Partial<Pick<RecurringExpense, 'name' | 'emoji' | 'amount' | 'currency' | 'day_of_month' | 'is_active'>>
+  ): Promise<RecurringExpense | null> {
+    try {
+      const { data, error } = await supabase
+        .from('recurring_expenses')
+        .update({ ...updates, updated_at: new Date().toISOString() })
+        .eq('id', id)
+        .select()
+        .single()
+
+      if (error) throw new Error(`updateRecurringExpense failed: ${error.message}`)
+      return data
+    } catch (error) {
+      console.error('updateRecurringExpense error:', error)
+      throw error
+    }
+  }
+
+  async deleteRecurringExpense(id: string): Promise<boolean> {
+    try {
+      const { error } = await supabase
+        .from('recurring_expenses')
+        .update({ is_active: false })
+        .eq('id', id)
+
+      if (error) throw new Error(`deleteRecurringExpense failed: ${error.message}`)
+      return true
+    } catch (error) {
+      console.error('deleteRecurringExpense error:', error)
       throw error
     }
   }

@@ -1,6 +1,6 @@
 import { create } from 'zustand'
 import { Task, RecurringTask, TaskCategory, Subtask } from '@/types'
-import type { AppMode, BudgetContext, Couple, BudgetCategory, Transaction, BudgetLimit, ExchangeRate, Account } from '@/types/budget'
+import type { AppMode, BudgetContext, Couple, BudgetCategory, Transaction, BudgetLimit, ExchangeRate, Account, RecurringExpense } from '@/types/budget'
 
 interface TaskCompletion {
   id: string
@@ -76,6 +76,8 @@ interface AppState {
   setBudgetLimits: (limits: BudgetLimit[]) => void
   accounts: Account[]
   setAccounts: (accounts: Account[]) => void
+  recurringExpenses: RecurringExpense[]
+  setRecurringExpenses: (expenses: RecurringExpense[]) => void
   exchangeRates: ExchangeRate[]
   setExchangeRates: (rates: ExchangeRate[]) => void
   budgetSelectedMonth: string
@@ -163,6 +165,8 @@ export const useAppStore = create<AppState>((set, get) => ({
   setBudgetLimits: (limits) => set({ budgetLimits: limits }),
   accounts: [],
   setAccounts: (accounts) => set({ accounts }),
+  recurringExpenses: [],
+  setRecurringExpenses: (expenses) => set({ recurringExpenses: expenses }),
   exchangeRates: [],
   setExchangeRates: (rates) => set({ exchangeRates: rates }),
   budgetSelectedMonth: (() => {

@@ -461,9 +461,9 @@ export function useBudget() {
     try {
       const txn = await budgetDatabaseService.markExpensePaid(expense, couple.id)
       if (txn) {
-        const currentTransactions = getState().transactions
-        setTransactions([txn, ...currentTransactions])
         toast.success(`${expense.emoji} ${expense.name} — оплачено`)
+        // Reload transactions to get full joined data and correct month filter
+        await reloadTransactions()
       }
       return txn
     } catch (error) {
@@ -471,7 +471,7 @@ export function useBudget() {
       toast.error('Не удалось отметить оплату')
       throw error
     }
-  }, [setTransactions])
+  }, [reloadTransactions])
 
   const deleteRecurringExpense = useCallback(async (id: string) => {
     try {

@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react'
 import { motion } from 'framer-motion'
+import { ChevronLeft, ChevronRight } from 'lucide-react'
 import { PieChart, Pie, Cell, BarChart, Bar, XAxis, YAxis, ResponsiveContainer, Tooltip } from 'recharts'
 import { useAppStore } from '@/store'
 import { formatAmount } from '@/hooks/useBudget'
@@ -22,9 +23,22 @@ export const BudgetAnalyticsView: React.FC = () => {
     transactions,
     budgetLimits,
     budgetSelectedMonth,
+    setBudgetSelectedMonth,
     userId,
   } = useAppStore()
   const [monthlyHistory, setMonthlyHistory] = useState<{ month: string; total: number }[]>([])
+
+  const monthLabel = useMemo(() => {
+    const [y, m] = budgetSelectedMonth.split('-')
+    const date = new Date(Number(y), Number(m) - 1)
+    return date.toLocaleDateString('ru-RU', { month: 'long', year: 'numeric' })
+  }, [budgetSelectedMonth])
+
+  const navigateMonth = (delta: number) => {
+    const [y, m] = budgetSelectedMonth.split('-').map(Number)
+    const d = new Date(y, m - 1 + delta)
+    setBudgetSelectedMonth(`${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`)
+  }
 
   // Load 6-month history
   useEffect(() => {
@@ -103,6 +117,25 @@ export const BudgetAnalyticsView: React.FC = () => {
       <div className="flex items-center justify-between">
         <h2 className="text-lg font-semibold text-[var(--color-text-primary)]">Аналитика</h2>
         <BudgetContextSwitcher />
+      </div>
+
+      {/* Month navigation */}
+      <div className="flex items-center justify-center gap-4">
+        <button
+          onClick={() => navigateMonth(-1)}
+          className="p-1.5 rounded-lg hover:bg-[var(--color-bg-tertiary)] text-[var(--color-text-secondary)]"
+        >
+          <ChevronLeft size={18} />
+        </button>
+        <span className="text-sm font-medium text-[var(--color-text-primary)] capitalize min-w-[140px] text-center">
+          {monthLabel}
+        </span>
+        <button
+          onClick={() => navigateMonth(1)}
+          className="p-1.5 rounded-lg hover:bg-[var(--color-bg-tertiary)] text-[var(--color-text-secondary)]"
+        >
+          <ChevronRight size={18} />
+        </button>
       </div>
 
       <motion.div

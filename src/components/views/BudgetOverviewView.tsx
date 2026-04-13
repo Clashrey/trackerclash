@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import {
-  Plus, X, Wallet, TrendingDown, ChevronRight, ChevronDown, ChevronUp, ChevronLeft,
+  Plus, X, Wallet, TrendingDown, ChevronRight, ChevronDown, ChevronUp,
   CalendarClock, Trash2, Check, Bell,
 } from 'lucide-react'
 import { useAppStore } from '@/store'
@@ -9,6 +9,7 @@ import { useBudget, formatAmount, CURRENCY_SYMBOLS } from '@/hooks/useBudget'
 import { budgetDatabaseService } from '@/lib/budget-database'
 import { BudgetContextSwitcher } from '@/components/BudgetContextSwitcher'
 import { AddTransactionSheet } from '@/components/budget/AddTransactionSheet'
+import { CategoryPicker } from '@/components/budget/CategoryPicker'
 import { variants, transitions } from '@/lib/animations'
 import type { Currency, RecurringExpenseType } from '@/types/budget'
 
@@ -91,8 +92,6 @@ export const BudgetOverviewView: React.FC = () => {
     accounts,
     recurringExpenses,
     userId,
-    budgetSelectedMonth,
-    setBudgetSelectedMonth,
   } = useAppStore()
   const {
     addAccount,
@@ -121,6 +120,7 @@ export const BudgetOverviewView: React.FC = () => {
   const [expCurrency, setExpCurrency] = useState<Currency>('THB')
   const [expDay, setExpDay] = useState('')
   const [expType, setExpType] = useState<RecurringExpenseType>('bill')
+  const [expCategoryId, setExpCategoryId] = useState<string | null>(null)
   const [editingExpenseId, setEditingExpenseId] = useState<string | null>(null)
   const [editExpAmount, setEditExpAmount] = useState('')
 
@@ -128,7 +128,7 @@ export const BudgetOverviewView: React.FC = () => {
   const [balanceExpanded, setBalanceExpanded] = useState(false)
   // Collapsible recurring sub-blocks
   const [billsExpanded, setBillsExpanded] = useState(true)
-  const [subsExpanded, setSubsExpanded] = useState(true)
+  const [subsExpanded, setSubsExpanded] = useState(false)
   const [paidVisible, setPaidVisible] = useState(false)
 
   // Expense payment status for current month
@@ -142,19 +142,6 @@ export const BudgetOverviewView: React.FC = () => {
   }, [couple, transactions])
 
   const defaultCurrency: Currency = budgetContext === 'personal' ? 'THB' : 'RUB'
-
-  // Month navigation
-  const monthLabel = useMemo(() => {
-    const [y, m] = budgetSelectedMonth.split('-')
-    const date = new Date(Number(y), Number(m) - 1)
-    return date.toLocaleDateString('ru-RU', { month: 'long', year: 'numeric' })
-  }, [budgetSelectedMonth])
-
-  const navigateMonth = (delta: number) => {
-    const [y, m] = budgetSelectedMonth.split('-').map(Number)
-    const d = new Date(y, m - 1 + delta)
-    setBudgetSelectedMonth(`${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`)
-  }
 
   // ─── Spending calculations ──────────────────────────
 
@@ -254,8 +241,9 @@ export const BudgetOverviewView: React.FC = () => {
     await addRecurringExpense({
       name: expName.trim(), emoji: expEmoji, amount, currency: expCurrency,
       day_of_month: day, type: expType, context: budgetContext,
+      category_id: expType === 'bill' ? expCategoryId : null,
     })
-    setExpName(''); setExpEmoji('📅'); setExpAmount(''); setExpDay(''); setShowAddExpense(false)
+    setExpName(''); setExpEmoji('📅'); setExpAmount(''); setExpDay(''); setExpCategoryId(null); setShowAddExpense(false)
   }
 
   const handleUpdateExpenseAmount = async (id: string) => {
@@ -284,25 +272,6 @@ export const BudgetOverviewView: React.FC = () => {
       <div className="flex items-center justify-between">
         <h2 className="text-lg font-semibold text-[var(--color-text-primary)]">Обзор</h2>
         <BudgetContextSwitcher />
-      </div>
-
-      {/* Month navigation */}
-      <div className="flex items-center justify-center gap-4">
-        <button
-          onClick={() => navigateMonth(-1)}
-          className="p-1.5 rounded-lg hover:bg-[var(--color-bg-tertiary)] text-[var(--color-text-secondary)]"
-        >
-          <ChevronLeft size={18} />
-        </button>
-        <span className="text-sm font-medium text-[var(--color-text-primary)] capitalize min-w-[140px] text-center">
-          {monthLabel}
-        </span>
-        <button
-          onClick={() => navigateMonth(1)}
-          className="p-1.5 rounded-lg hover:bg-[var(--color-bg-tertiary)] text-[var(--color-text-secondary)]"
-        >
-          <ChevronRight size={18} />
-        </button>
       </div>
 
       {/* ═══ DUE BILLS NOTIFICATION ═══ */}
@@ -545,12 +514,14 @@ export const BudgetOverviewView: React.FC = () => {
 
           {/* ── Bills sub-block ── */}
           {bills.length > 0 && (
-            <div className="mb-3">
+            <div className="mb-2">
               <button
                 onClick={() => setBillsExpanded(!billsExpanded)}
-                className="flex items-center gap-1.5 w-full mb-1.5"
+                className="flex items-center gap-1.5 w-full py-1"
               >
-                {billsExpanded ? <ChevronDown size={12} /> : <ChevronRight size={12} />}
+                {billsExpanded
+                  ? <ChevronDown size={12} className="text-[var(--color-text-tertiary)]" />
+                  : <ChevronRight size={12} className="text-[var(--color-text-tertiary)]" />}
                 <p className="text-[10px] text-[var(--color-text-tertiary)] font-medium uppercase tracking-wide">
                   Счета и оплаты ({bills.filter(b => !paidMap[b.id]).length}/{bills.length})
                 </p>
@@ -670,12 +641,14 @@ export const BudgetOverviewView: React.FC = () => {
 
           {/* ── Subscriptions sub-block ── */}
           {subscriptions.length > 0 && (
-            <div className="mb-3">
+            <div className="mb-2">
               <button
                 onClick={() => setSubsExpanded(!subsExpanded)}
-                className="flex items-center gap-1.5 w-full mb-1.5"
+                className="flex items-center gap-1.5 w-full py-1"
               >
-                {subsExpanded ? <ChevronDown size={12} /> : <ChevronRight size={12} />}
+                {subsExpanded
+                  ? <ChevronDown size={12} className="text-[var(--color-text-tertiary)]" />
+                  : <ChevronRight size={12} className="text-[var(--color-text-tertiary)]" />}
                 <p className="text-[10px] text-[var(--color-text-tertiary)] font-medium uppercase tracking-wide">
                   Подписки ({subscriptions.length})
                 </p>
@@ -774,6 +747,19 @@ export const BudgetOverviewView: React.FC = () => {
                 <input type="text" placeholder="Название" value={expName}
                   onChange={(e) => setExpName(e.target.value)}
                   className="w-full px-3 py-1.5 rounded-lg bg-[var(--color-bg-tertiary)] text-[var(--color-text-primary)] text-sm outline-none" />
+
+                {/* Category picker for bills */}
+                {expType === 'bill' && budgetCategories.length > 0 && (
+                  <div>
+                    <p className="text-[10px] text-[var(--color-text-tertiary)] mb-1">Категория (опционально)</p>
+                    <CategoryPicker
+                      categories={budgetCategories}
+                      selectedId={expCategoryId}
+                      onSelect={(id) => setExpCategoryId(expCategoryId === id ? null : id)}
+                    />
+                  </div>
+                )}
+
                 <div className="flex gap-2">
                   <input type="text" inputMode="decimal" placeholder="Сумма" value={expAmount}
                     onChange={(e) => setExpAmount(e.target.value.replace(/[^0-9.,]/g, '').replace(',', '.'))}

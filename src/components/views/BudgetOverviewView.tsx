@@ -2,7 +2,7 @@ import React, { useEffect, useMemo, useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import {
   Plus, X, Wallet, TrendingDown, ChevronRight, ChevronDown, ChevronUp,
-  CalendarClock, Trash2, Check, Bell,
+  CalendarClock, Trash2, Check, Bell, Banknote,
 } from 'lucide-react'
 import { useAppStore } from '@/store'
 import { useBudget, formatAmount, CURRENCY_SYMBOLS } from '@/hooks/useBudget'
@@ -112,6 +112,9 @@ export const BudgetOverviewView: React.FC = () => {
     recurringExpenses,
     userId,
     exchangeRates,
+    incomeSources,
+    monthlyIncomes,
+    budgetSelectedMonth,
   } = useAppStore()
   const {
     addAccount,
@@ -121,6 +124,8 @@ export const BudgetOverviewView: React.FC = () => {
     updateRecurringExpense,
     deleteRecurringExpense,
     markExpensePaid,
+    addIncomeSource,
+    setMonthlyIncome,
   } = useBudget()
 
   // Account form
@@ -154,6 +159,13 @@ export const BudgetOverviewView: React.FC = () => {
 
   // Expense payment status for current month
   const [paidMap, setPaidMap] = useState<Record<string, boolean>>({})
+
+  // Income editing (work context)
+  const [editingIncomeId, setEditingIncomeId] = useState<string | null>(null)
+  const [incomeInput, setIncomeInput] = useState('')
+  const [showAddSource, setShowAddSource] = useState(false)
+  const [newSourceName, setNewSourceName] = useState('')
+  const [newSourceEmoji, setNewSourceEmoji] = useState('💼')
 
   // Load payment status
   useEffect(() => {
@@ -314,6 +326,51 @@ export const BudgetOverviewView: React.FC = () => {
     setPaidMap(prev => ({ ...prev, [expenseId]: true }))
   }
 
+  // ─── Income handlers (work) ─────────────────────────
+
+  const handleSaveIncome = async (sourceId: string) => {
+    const val = parseFloat(incomeInput.replace(',', '.'))
+    if (isNaN(val) || val <= 0) { setEditingIncomeId(null); return }
+    await setMonthlyIncome({
+      source_id: sourceId,
+      month: budgetSelectedMonth,
+      amount: val,
+      currency: defaultCurrency,
+    })
+    setEditingIncomeId(null)
+  }
+
+  const handleAddIncomeSource = async () => {
+    if (!newSourceName.trim()) return
+    const source = await addIncomeSource({ name: newSourceName.trim(), emoji: newSourceEmoji })
+    setNewSourceName(''); setNewSourceEmoji('💼'); setShowAddSource(false)
+    if (source) { setEditingIncomeId(source.id); setIncomeInput('') }
+  }
+
+  // Should we prompt for next month's income?
+  const activeIncomeSources = useMemo(() => incomeSources.filter(s => s.is_active), [incomeSources])
+
+  const incomePrompt = useMemo(() => {
+    if (budgetContext !== 'work' || activeIncomeSources.length === 0) return null
+
+    const now = new Date()
+    const dayOfMonth = now.getDate()
+    const daysInMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate()
+    const isEndOfMonth = dayOfMonth >= daysInMonth - 1 // last 2 days
+
+    if (!isEndOfMonth) return null
+
+    // Check next month
+    const nextMonth = new Date(now.getFullYear(), now.getMonth() + 1, 1)
+    const nextMonthStr = `${nextMonth.getFullYear()}-${String(nextMonth.getMonth() + 1).padStart(2, '0')}`
+    const filledSources = monthlyIncomes.filter(i => i.month === nextMonthStr && Number(i.amount) > 0)
+    const unfilled = activeIncomeSources.filter(s => !filledSources.some(f => f.source_id === s.id))
+
+    if (unfilled.length === 0) return null
+
+    return { nextMonthStr, unfilled }
+  }, [budgetContext, activeIncomeSources, monthlyIncomes])
+
   if (!couple) {
     return (
       <div className="text-center py-12 text-[var(--color-text-tertiary)]">
@@ -353,6 +410,37 @@ export const BudgetOverviewView: React.FC = () => {
                     className="flex-shrink-0 px-2 py-0.5 rounded-md bg-amber-600 text-white text-[10px] font-medium hover:bg-amber-700 transition-colors"
                   >
                     Оплачено
+                  </button>
+                </div>
+              ))}
+            </div>
+          </div>
+        </motion.div>
+      )}
+
+      {/* ═══ INCOME FILL PROMPT ═══ */}
+      {incomePrompt && (
+        <motion.div
+          initial={{ opacity: 0, y: -10 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="p-3 rounded-xl bg-blue-50 border border-blue-200 dark:bg-blue-900/20 dark:border-blue-700/50"
+        >
+          <div className="flex items-start gap-2">
+            <TrendingDown size={16} className="text-blue-600 dark:text-blue-400 mt-0.5 flex-shrink-0 rotate-180" />
+            <div className="space-y-1 flex-1">
+              <p className="text-xs font-medium text-blue-800 dark:text-blue-300">
+                Укажите доход на следующий месяц
+              </p>
+              {incomePrompt.unfilled.map(source => (
+                <div key={source.id} className="flex items-center justify-between gap-2">
+                  <span className="text-sm text-blue-900 dark:text-blue-200">
+                    {source.emoji} {source.name}
+                  </span>
+                  <button
+                    onClick={() => { setEditingIncomeId(source.id); setIncomeInput('') }}
+                    className="flex-shrink-0 px-2 py-0.5 rounded-md bg-blue-600 text-white text-[10px] font-medium hover:bg-blue-700 transition-colors"
+                  >
+                    Указать
                   </button>
                 </div>
               ))}
@@ -582,6 +670,139 @@ export const BudgetOverviewView: React.FC = () => {
 
         {/* ═══ P&L (work context only) ═══ */}
         {budgetContext === 'work' && <ProfitLossCard />}
+
+        {/* ═══ INCOME SOURCES (work context only) ═══ */}
+        {budgetContext === 'work' && (
+          <motion.div
+            variants={variants.listItem}
+            transition={transitions.smooth}
+            className="p-4 rounded-xl bg-[var(--color-bg-elevated)] border border-[var(--color-border-primary)]"
+          >
+            <div className="flex items-center justify-between mb-3">
+              <div className="flex items-center gap-2">
+                <Banknote size={14} className="text-green-600 dark:text-green-400" />
+                <p className="text-xs font-medium text-[var(--color-text-tertiary)] uppercase tracking-wide">Доходы</p>
+              </div>
+              <button
+                onClick={() => setShowAddSource(true)}
+                className="p-1 rounded-lg hover:bg-[var(--color-bg-tertiary)] text-[var(--color-text-tertiary)] hover:text-[var(--color-accent)]"
+              >
+                <Plus size={14} />
+              </button>
+            </div>
+
+            {activeIncomeSources.length === 0 ? (
+              <p className="text-sm text-[var(--color-text-tertiary)] text-center py-2">
+                Добавьте источники дохода
+              </p>
+            ) : (
+              <div className="space-y-2">
+                {activeIncomeSources.map(source => {
+                  const income = monthlyIncomes.find(i => i.source_id === source.id)
+                  const isEditing = editingIncomeId === source.id
+
+                  return (
+                    <div key={source.id} className="flex items-center gap-2">
+                      <span className="text-sm">{source.emoji}</span>
+                      <span className="text-sm text-[var(--color-text-primary)] flex-1 truncate">{source.name}</span>
+
+                      {isEditing ? (
+                        <input
+                          type="text"
+                          inputMode="decimal"
+                          autoFocus
+                          placeholder="Сумма"
+                          value={incomeInput}
+                          onChange={(e) => setIncomeInput(e.target.value.replace(/[^0-9.,]/g, '').replace(',', '.'))}
+                          onBlur={() => handleSaveIncome(source.id)}
+                          onKeyDown={(e) => { if (e.key === 'Enter') handleSaveIncome(source.id) }}
+                          className="w-28 px-2 py-1 rounded-lg bg-[var(--color-bg-tertiary)] text-[var(--color-text-primary)] text-sm text-right outline-none ring-1 ring-[var(--color-accent)]"
+                        />
+                      ) : (
+                        <button
+                          onClick={() => {
+                            setEditingIncomeId(source.id)
+                            setIncomeInput(income ? String(income.amount) : '')
+                          }}
+                          className={`text-sm px-2 py-0.5 rounded-md transition-colors ${
+                            income
+                              ? 'text-green-600 dark:text-green-400 font-bold hover:bg-[var(--color-bg-tertiary)]'
+                              : 'text-[var(--color-accent)] bg-[var(--color-accent-10,rgba(59,130,246,0.1))]'
+                          }`}
+                        >
+                          {income ? formatAmount(Number(income.amount), income.currency) : 'Указать'}
+                        </button>
+                      )}
+                    </div>
+                  )
+                })}
+
+                {/* Total income */}
+                {monthlyIncomes.length > 0 && (
+                  <div className="flex items-center gap-2 pt-2 border-t border-[var(--color-border-secondary)]">
+                    <span className="text-xs text-[var(--color-text-tertiary)] flex-1">Итого</span>
+                    <span className="text-sm font-bold text-green-600 dark:text-green-400">
+                      {formatAmount(
+                        monthlyIncomes
+                          .filter(i => activeIncomeSources.some(s => s.id === i.source_id))
+                          .reduce((sum, i) => sum + Number(i.amount), 0),
+                        defaultCurrency,
+                      )}
+                    </span>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* Add source inline */}
+            <AnimatePresence>
+              {showAddSource && (
+                <motion.div
+                  initial={{ opacity: 0, height: 0 }}
+                  animate={{ opacity: 1, height: 'auto' }}
+                  exit={{ opacity: 0, height: 0 }}
+                  transition={transitions.smooth}
+                  className="mt-3 pt-3 border-t border-[var(--color-border-secondary)] space-y-2"
+                >
+                  <div className="flex gap-1 flex-wrap">
+                    {['💼', '🏢', '💻', '📊', '🎯', '📝', '🛠️', '🎨', '📱', '🌐'].map(e => (
+                      <button
+                        key={e}
+                        onClick={() => setNewSourceEmoji(e)}
+                        className={`text-lg p-0.5 rounded ${newSourceEmoji === e ? 'bg-[var(--color-accent-10)]' : ''}`}
+                      >
+                        {e}
+                      </button>
+                    ))}
+                  </div>
+                  <div className="flex gap-2">
+                    <input
+                      type="text"
+                      placeholder="Название"
+                      value={newSourceName}
+                      onChange={(e) => setNewSourceName(e.target.value)}
+                      onKeyDown={(e) => { if (e.key === 'Enter') handleAddIncomeSource() }}
+                      className="flex-1 px-3 py-1.5 rounded-lg bg-[var(--color-bg-tertiary)] text-[var(--color-text-primary)] text-sm outline-none"
+                    />
+                    <button
+                      onClick={handleAddIncomeSource}
+                      disabled={!newSourceName.trim()}
+                      className="px-3 py-1.5 rounded-lg bg-[var(--color-accent)] text-white text-sm font-medium disabled:opacity-50"
+                    >
+                      OK
+                    </button>
+                    <button
+                      onClick={() => setShowAddSource(false)}
+                      className="p-1.5 rounded-lg text-[var(--color-text-tertiary)] hover:bg-[var(--color-bg-tertiary)]"
+                    >
+                      <X size={14} />
+                    </button>
+                  </div>
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </motion.div>
+        )}
 
         {/* ═══ RECURRING EXPENSES ═══ */}
         <motion.div

@@ -1,5 +1,5 @@
 import React, { useCallback, useMemo, useState } from 'react'
-import { CalendarCheck, Sparkles, RefreshCw } from 'lucide-react'
+import { CalendarCheck, Sparkles, RefreshCw, Lightbulb } from 'lucide-react'
 import { useAppStore } from '../../store'
 import { useDatabase } from '../../hooks/useDatabase'
 import { AddTaskForm } from '../AddTaskForm'
@@ -47,14 +47,14 @@ export function TodayView() {
   const totalTasks = todayTasks.length + todayRecurringTasks.length
   const completedTasks = todayTasks.filter(t => t.completed).length + todayRecurringTasks.filter(t => t.completed).length
 
-  // Random task from "Задачи" section
-  const backlogTasks = useMemo(() => tasks.filter(t => t.category === 'tasks' && !t.completed), [tasks])
+  // Random task from "Задачи" or "Идеи" section
+  const backlogItems = useMemo(() => tasks.filter(t => (t.category === 'tasks' || t.category === 'ideas') && !t.completed), [tasks])
   const randomTask = useMemo(() => {
-    if (backlogTasks.length === 0) return null
-    const idx = (Date.now() + randomSeed) % backlogTasks.length
-    return backlogTasks[idx]
+    if (backlogItems.length === 0) return null
+    const idx = (Date.now() + randomSeed) % backlogItems.length
+    return backlogItems[idx]
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [backlogTasks, randomSeed])
+  }, [backlogItems, randomSeed])
 
   const handleToggleTask = useCallback(async (taskId: string) => {
     const regularTask = todayRecurringTasks.find(t => t.id === taskId)
@@ -154,8 +154,13 @@ export function TodayView() {
       {randomTask && (
         <div className="p-3 rounded-xl bg-[var(--color-accent-light,rgba(59,130,246,0.08))] border border-[var(--color-accent,#3b82f6)]/20">
           <div className="flex items-center gap-2 mb-1.5">
-            <Sparkles size={14} className="text-[var(--color-accent)]" />
-            <p className="text-xs font-medium text-[var(--color-accent)]">Может сегодня?</p>
+            {randomTask.category === 'ideas'
+              ? <Lightbulb size={14} className="text-amber-500" />
+              : <Sparkles size={14} className="text-[var(--color-accent)]" />
+            }
+            <p className="text-xs font-medium text-[var(--color-accent)]">
+              {randomTask.category === 'ideas' ? 'Идея на заметку' : 'Может сегодня?'}
+            </p>
             <button
               onClick={() => setRandomSeed(s => s + 1)}
               className="ml-auto p-1 rounded-md hover:bg-[var(--color-bg-tertiary)] text-[var(--color-text-tertiary)] hover:text-[var(--color-accent)] transition-colors"
@@ -167,9 +172,7 @@ export function TodayView() {
           <div className="flex items-center justify-between gap-2">
             <p className="text-sm text-[var(--color-text-primary)] flex-1 truncate">{randomTask.title}</p>
             <button
-              onClick={async () => {
-                await rescheduleTask(randomTask.id, selectedDate)
-              }}
+              onClick={() => setRescheduleTaskId(randomTask.id)}
               className="flex-shrink-0 px-2.5 py-1 rounded-md bg-[var(--color-accent)] text-white text-xs font-medium hover:bg-[var(--color-accent-hover)] transition-colors"
             >
               Взять

@@ -77,6 +77,23 @@ export interface BudgetLimit {
 }
 
 /**
+ * Банковский счёт / кошелёк пользователя
+ */
+export interface Account {
+  id: string
+  couple_id: string
+  user_id: string
+  name: string
+  emoji: string
+  currency: Currency
+  balance: number
+  order_index: number
+  is_archived: boolean
+  created_at: string
+  updated_at: string
+}
+
+/**
  * Курс обмена между валютами
  */
 export interface ExchangeRate {

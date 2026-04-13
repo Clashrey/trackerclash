@@ -5,6 +5,7 @@ import type {
   BudgetCategory,
   Transaction,
   BudgetLimit,
+  Account,
   BudgetContext,
   Currency,
   TransactionType,
@@ -72,13 +73,48 @@ class BudgetDatabaseService {
 
       if (error) throw new Error(`createCouple failed: ${error.message}`)
 
-      // Create default categories
-      await supabase.rpc('create_default_categories', { p_couple_id: data.id })
+      // Create default categories directly (no RPC dependency)
+      await this.createDefaultCategories(data.id)
 
       return data
     } catch (error) {
       console.error('createCouple error:', error)
       throw error
+    }
+  }
+
+  private async createDefaultCategories(coupleId: string): Promise<void> {
+    const personal = [
+      { name: 'Еда', emoji: '🍕', color: '#FF6B6B', context: 'personal' as const, order_index: 0 },
+      { name: 'Жильё', emoji: '🏠', color: '#4ECDC4', context: 'personal' as const, order_index: 1 },
+      { name: 'Транспорт', emoji: '🚗', color: '#45B7D1', context: 'personal' as const, order_index: 2 },
+      { name: 'Развлечения', emoji: '🎬', color: '#FFA07A', context: 'personal' as const, order_index: 3 },
+      { name: 'Одежда', emoji: '👕', color: '#F7B801', context: 'personal' as const, order_index: 4 },
+      { name: 'Здоровье', emoji: '💊', color: '#95E1D3', context: 'personal' as const, order_index: 5 },
+      { name: 'Подписки', emoji: '📱', color: '#C6A8FA', context: 'personal' as const, order_index: 6 },
+      { name: 'Путешествия', emoji: '✈️', color: '#87CEEB', context: 'personal' as const, order_index: 7 },
+      { name: 'Образование', emoji: '🎓', color: '#98D8C8', context: 'personal' as const, order_index: 8 },
+      { name: 'Переводы', emoji: '💸', color: '#F7DC6F', context: 'personal' as const, order_index: 9 },
+      { name: 'Другое', emoji: '📦', color: '#BDC3C7', context: 'personal' as const, order_index: 10 },
+    ]
+    const work = [
+      { name: 'Реклама', emoji: '📢', color: '#E74C3C', context: 'work' as const, order_index: 0 },
+      { name: 'Подписки/SaaS', emoji: '💻', color: '#3498DB', context: 'work' as const, order_index: 1 },
+      { name: 'Подрядчики', emoji: '👤', color: '#9B59B6', context: 'work' as const, order_index: 2 },
+      { name: 'Контент', emoji: '🎨', color: '#E67E22', context: 'work' as const, order_index: 3 },
+      { name: 'Офис/Оборудование', emoji: '🏢', color: '#1ABC9C', context: 'work' as const, order_index: 4 },
+      { name: 'Налоги/Бухгалтерия', emoji: '📊', color: '#2ECC71', context: 'work' as const, order_index: 5 },
+      { name: 'Другое', emoji: '📦', color: '#95A5A6', context: 'work' as const, order_index: 6 },
+    ]
+
+    const rows = [...personal, ...work].map(cat => ({ couple_id: coupleId, ...cat }))
+
+    const { error } = await supabase
+      .from('budget_categories')
+      .insert(rows)
+
+    if (error) {
+      console.error('createDefaultCategories error:', error)
     }
   }
 
@@ -489,6 +525,82 @@ class BudgetDatabaseService {
       return true
     } catch (error) {
       console.error('updateExchangeRate error:', error)
+      throw error
+    }
+  }
+
+  // ─── Accounts ─────────────────────────────────────────
+
+  async getAccounts(coupleId: string): Promise<Account[]> {
+    try {
+      const { data, error } = await supabase
+        .from('accounts')
+        .select('*')
+        .eq('couple_id', coupleId)
+        .eq('is_archived', false)
+        .order('order_index')
+
+      if (error) throw new Error(`getAccounts failed: ${error.message}`)
+      return data || []
+    } catch (error) {
+      console.error('getAccounts error:', error)
+      throw error
+    }
+  }
+
+  async addAccount(
+    coupleId: string,
+    params: { name: string; emoji: string; currency: Currency; balance: number; order_index: number }
+  ): Promise<Account | null> {
+    const userId = this.getCurrentUserId()
+    if (!userId) return null
+
+    try {
+      const { data, error } = await supabase
+        .from('accounts')
+        .insert([{ couple_id: coupleId, user_id: userId, ...params }])
+        .select()
+        .single()
+
+      if (error) throw new Error(`addAccount failed: ${error.message}`)
+      return data
+    } catch (error) {
+      console.error('addAccount error:', error)
+      throw error
+    }
+  }
+
+  async updateAccount(
+    id: string,
+    updates: Partial<Pick<Account, 'name' | 'emoji' | 'balance' | 'currency'>>
+  ): Promise<Account | null> {
+    try {
+      const { data, error } = await supabase
+        .from('accounts')
+        .update({ ...updates, updated_at: new Date().toISOString() })
+        .eq('id', id)
+        .select()
+        .single()
+
+      if (error) throw new Error(`updateAccount failed: ${error.message}`)
+      return data
+    } catch (error) {
+      console.error('updateAccount error:', error)
+      throw error
+    }
+  }
+
+  async deleteAccount(id: string): Promise<boolean> {
+    try {
+      const { error } = await supabase
+        .from('accounts')
+        .update({ is_archived: true })
+        .eq('id', id)
+
+      if (error) throw new Error(`deleteAccount failed: ${error.message}`)
+      return true
+    } catch (error) {
+      console.error('deleteAccount error:', error)
       throw error
     }
   }

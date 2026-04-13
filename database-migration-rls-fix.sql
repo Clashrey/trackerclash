@@ -7,11 +7,13 @@
 -- ============================================================================
 
 -- Вспомогательная функция: получить user_id из заголовка запроса
+-- ВАЖНО: Supabase передаёт ВСЕ заголовки как JSON в request.headers (множественное число),
+-- а НЕ как отдельные GUC переменные request.header.<name> (единственное число).
 CREATE OR REPLACE FUNCTION get_request_user_id()
 RETURNS TEXT AS $$
 BEGIN
   RETURN coalesce(
-    current_setting('request.header.x-user-id', true),
+    (current_setting('request.headers', true)::json->>'x-user-id'),
     ''
   );
 END;

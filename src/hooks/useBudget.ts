@@ -25,6 +25,7 @@ export function useBudget() {
     setBudgetCategories,
     setTransactions,
     setBudgetLimits,
+    setAccounts,
   } = useAppStore()
 
   const getState = () => useAppStore.getState()
@@ -40,23 +41,25 @@ export function useBudget() {
 
       const { budgetContext, budgetSelectedMonth } = getState()
 
-      const [categories, transactions, limits] = await Promise.all([
+      const [categories, transactions, limits, accounts] = await Promise.all([
         budgetDatabaseService.getCategories(couple.id, budgetContext),
         budgetDatabaseService.getTransactions(couple.id, {
           month: budgetSelectedMonth,
           context: budgetContext,
         }),
         budgetDatabaseService.getBudgetLimits(couple.id, budgetSelectedMonth),
+        budgetDatabaseService.getAccounts(couple.id),
       ])
 
       setBudgetCategories(categories)
       setTransactions(transactions)
       setBudgetLimits(limits)
+      setAccounts(accounts)
     } catch (error) {
       console.error('loadBudgetData failed:', error)
       toast.error('Не удалось загрузить данные бюджета')
     }
-  }, [setCouple, setBudgetCategories, setTransactions, setBudgetLimits])
+  }, [setCouple, setBudgetCategories, setTransactions, setBudgetLimits, setAccounts])
 
   const reloadTransactions = useCallback(async () => {
     const { couple, budgetContext, budgetSelectedMonth } = getState()
@@ -331,6 +334,70 @@ export function useBudget() {
     }
   }, [setBudgetLimits])
 
+  // ─── Accounts ─────────────────────────────────────────
+
+  const addAccount = useCallback(async (params: {
+    name: string
+    emoji: string
+    currency: Currency
+    balance: number
+  }) => {
+    const { couple, accounts } = getState()
+    if (!couple) return null
+
+    try {
+      const account = await budgetDatabaseService.addAccount(couple.id, {
+        ...params,
+        order_index: accounts.length,
+      })
+      if (account) {
+        setAccounts([...accounts, account])
+        toast.success(`Счёт «${params.name}» добавлен`)
+      }
+      return account
+    } catch (error) {
+      console.error('addAccount failed:', error)
+      toast.error('Не удалось добавить счёт')
+      throw error
+    }
+  }, [setAccounts])
+
+  const updateAccount = useCallback(async (id: string, updates: {
+    name?: string
+    emoji?: string
+    balance?: number
+    currency?: Currency
+  }) => {
+    try {
+      const account = await budgetDatabaseService.updateAccount(id, updates)
+      if (account) {
+        const current = getState().accounts
+        setAccounts(current.map(a => a.id === id ? account : a))
+      }
+      return account
+    } catch (error) {
+      console.error('updateAccount failed:', error)
+      toast.error('Не удалось обновить счёт')
+      throw error
+    }
+  }, [setAccounts])
+
+  const deleteAccount = useCallback(async (id: string) => {
+    try {
+      const success = await budgetDatabaseService.deleteAccount(id)
+      if (success) {
+        const current = getState().accounts
+        setAccounts(current.filter(a => a.id !== id))
+        toast('Счёт удалён')
+      }
+      return success
+    } catch (error) {
+      console.error('deleteAccount failed:', error)
+      toast.error('Не удалось удалить счёт')
+      throw error
+    }
+  }, [setAccounts])
+
   // ─── Balance ──────────────────────────────────────────
 
   const getCoupleBalance = useCallback(async () => {
@@ -362,6 +429,9 @@ export function useBudget() {
     setBudgetLimit,
     copyLimitsFromPrevMonth,
     getCoupleBalance,
+    addAccount,
+    updateAccount,
+    deleteAccount,
     formatAmount,
   }
 }

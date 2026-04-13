@@ -12,7 +12,25 @@ if (!supabaseUrl || !supabaseAnonKey) {
   )
 }
 
-export const supabase = createClient(supabaseUrl, supabaseAnonKey)
+// Ленивый импорт store чтобы избежать circular dependency
+let getUserId: () => string | null = () => null
+
+export function initSupabaseUserContext(getter: () => string | null) {
+  getUserId = getter
+}
+
+export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
+  global: {
+    fetch: (url, options = {}) => {
+      const userId = getUserId()
+      const headers = new Headers(options.headers)
+      if (userId) {
+        headers.set('x-user-id', userId)
+      }
+      return fetch(url, { ...options, headers })
+    },
+  },
+})
 
 // Database types
 export interface Database {

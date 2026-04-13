@@ -3,10 +3,14 @@ import { Toaster } from 'sonner'
 import { useAuth } from './hooks/useAuth'
 import { useDatabase } from './hooks/useDatabase'
 import { useAppStore } from './store'
+import { initSupabaseUserContext } from './lib/supabase'
 import { AuthForm } from './components/AuthForm'
 import { Layout } from './components/Layout'
 import { CommandPalette } from './components/CommandPalette'
 import { LoadingSpinner } from './components/ui/LoadingSpinner'
+
+// Привязываем userId из store к каждому запросу Supabase (для RLS через request.header.x-user-id)
+initSupabaseUserContext(() => useAppStore.getState().userId)
 
 function App() {
   const { user, loading } = useAuth()

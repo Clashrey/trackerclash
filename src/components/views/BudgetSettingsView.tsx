@@ -92,10 +92,14 @@ export const BudgetSettingsView: React.FC = () => {
 
   const handleAddSource = async () => {
     if (!sourceName.trim()) return
-    await addIncomeSource({ name: sourceName.trim(), emoji: sourceEmoji })
+    const source = await addIncomeSource({ name: sourceName.trim(), emoji: sourceEmoji })
     setSourceName('')
     setSourceEmoji('💼')
     setShowAddSource(false)
+    // Сразу открыть ввод суммы для нового источника
+    if (source) {
+      setEditingIncomeId(source.id)
+    }
   }
 
   const handleSaveIncome = async (sourceId: string) => {
@@ -429,7 +433,10 @@ export const BudgetSettingsView: React.FC = () => {
           transition={transitions.smooth}
           className="p-4 rounded-xl bg-[var(--color-bg-elevated)] border border-[var(--color-border-primary)] space-y-3"
         >
-          <p className="text-sm font-medium text-[var(--color-text-primary)]">Источники дохода</p>
+          <div className="flex items-center justify-between">
+            <p className="text-sm font-medium text-[var(--color-text-primary)]">Источники дохода</p>
+            <p className="text-[10px] text-[var(--color-text-tertiary)]">нажмите на сумму для ввода</p>
+          </div>
 
           <div className="space-y-2">
             {incomeSources.filter(s => s.is_active).map(source => {
@@ -461,11 +468,15 @@ export const BudgetSettingsView: React.FC = () => {
                   ) : (
                     <button
                       onClick={() => setEditingIncomeId(source.id)}
-                      className="text-sm text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)] transition-colors"
+                      className={`text-sm px-2 py-0.5 rounded-md transition-colors ${
+                        monthlyIncome
+                          ? 'text-[var(--color-text-primary)] font-medium hover:bg-[var(--color-bg-tertiary)]'
+                          : 'text-[var(--color-accent)] bg-[var(--color-accent-10,rgba(59,130,246,0.1))] hover:bg-[var(--color-accent-20,rgba(59,130,246,0.15))]'
+                      }`}
                     >
                       {monthlyIncome
                         ? formatAmount(Number(monthlyIncome.amount), monthlyIncome.currency)
-                        : `0 ${CURRENCY_SYMBOLS[defaultCurrency]}`}
+                        : `Указать сумму`}
                     </button>
                   )}
 

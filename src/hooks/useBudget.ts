@@ -50,7 +50,7 @@ export function useBudget() {
         }),
         budgetDatabaseService.getBudgetLimits(couple.id, budgetSelectedMonth),
         budgetDatabaseService.getAccounts(couple.id),
-        budgetDatabaseService.getRecurringExpenses(couple.id),
+        budgetDatabaseService.getRecurringExpenses(couple.id, budgetContext),
       ])
 
       setBudgetCategories(categories)
@@ -410,6 +410,7 @@ export function useBudget() {
     currency: Currency
     day_of_month: number
     type?: RecurringExpenseType
+    context?: BudgetContext
     category_id?: string | null
   }) => {
     const { couple, recurringExpenses } = getState()
@@ -451,14 +452,14 @@ export function useBudget() {
   }, [setRecurringExpenses])
 
   const markExpensePaid = useCallback(async (expenseId: string) => {
-    const { couple, recurringExpenses, budgetContext } = getState()
+    const { couple, recurringExpenses } = getState()
     if (!couple) return null
 
     const expense = recurringExpenses.find(e => e.id === expenseId)
     if (!expense) return null
 
     try {
-      const txn = await budgetDatabaseService.markExpensePaid(expense, couple.id, budgetContext)
+      const txn = await budgetDatabaseService.markExpensePaid(expense, couple.id)
       if (txn) {
         const currentTransactions = getState().transactions
         setTransactions([txn, ...currentTransactions])

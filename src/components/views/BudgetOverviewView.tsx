@@ -204,7 +204,7 @@ export const BudgetOverviewView: React.FC = () => {
     if (!expName.trim() || isNaN(amount) || isNaN(day) || day < 1 || day > 31) return
     await addRecurringExpense({
       name: expName.trim(), emoji: expEmoji, amount, currency: expCurrency,
-      day_of_month: day, type: expType,
+      day_of_month: day, type: expType, context: budgetContext,
     })
     setExpName(''); setExpEmoji('📅'); setExpAmount(''); setExpDay(''); setShowAddExpense(false)
   }
@@ -251,13 +251,13 @@ export const BudgetOverviewView: React.FC = () => {
                 Нужно оплатить
               </p>
               {dueBills.map(bill => (
-                <div key={bill.id} className="flex items-center justify-between">
+                <div key={bill.id} className="flex items-center justify-between gap-2">
                   <span className="text-sm text-amber-900 dark:text-amber-200">
-                    {bill.emoji} {bill.name} — {formatAmount(Number(bill.amount), bill.currency)}
+                    {bill.emoji} {bill.name} · {bill.day_of_month}-е · {formatAmount(Number(bill.amount), bill.currency)}
                   </span>
                   <button
                     onClick={() => handleMarkPaid(bill.id)}
-                    className="ml-2 px-2 py-0.5 rounded-md bg-amber-600 text-white text-[10px] font-medium hover:bg-amber-700 transition-colors"
+                    className="flex-shrink-0 px-2 py-0.5 rounded-md bg-amber-600 text-white text-[10px] font-medium hover:bg-amber-700 transition-colors"
                   >
                     Оплачено
                   </button>
@@ -274,32 +274,6 @@ export const BudgetOverviewView: React.FC = () => {
         animate="visible"
         className="space-y-3"
       >
-        {/* ═══ SPENDING SECTION ═══ */}
-        <motion.div
-          variants={variants.listItem}
-          transition={transitions.smooth}
-          className="p-4 rounded-xl bg-[var(--color-bg-elevated)] border border-[var(--color-border-primary)]"
-        >
-          <div className="flex items-center gap-2 mb-3">
-            <TrendingDown size={14} className="text-[var(--color-text-tertiary)]" />
-            <p className="text-xs font-medium text-[var(--color-text-tertiary)] uppercase tracking-wide">Траты</p>
-          </div>
-          <div className="grid grid-cols-3 gap-3">
-            <div>
-              <p className="text-[10px] text-[var(--color-text-tertiary)] mb-0.5">Сегодня</p>
-              <p className="text-lg font-bold text-[var(--color-text-primary)]">{formatAmount(spentToday, defaultCurrency)}</p>
-            </div>
-            <div>
-              <p className="text-[10px] text-[var(--color-text-tertiary)] mb-0.5">Неделя</p>
-              <p className="text-lg font-bold text-[var(--color-text-primary)]">{formatAmount(spentThisWeek, defaultCurrency)}</p>
-            </div>
-            <div>
-              <p className="text-[10px] text-[var(--color-text-tertiary)] mb-0.5">Месяц</p>
-              <p className="text-lg font-bold text-[var(--color-text-primary)]">{formatAmount(spentThisMonth, defaultCurrency)}</p>
-            </div>
-          </div>
-        </motion.div>
-
         {/* ═══ BALANCE SECTION (collapsible) ═══ */}
         <motion.div
           variants={variants.listItem}
@@ -314,11 +288,11 @@ export const BudgetOverviewView: React.FC = () => {
               <Wallet size={14} className="text-[var(--color-text-tertiary)]" />
               <p className="text-xs font-medium text-[var(--color-text-tertiary)] uppercase tracking-wide">Баланс</p>
             </div>
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-1">
               <span className="text-sm font-bold text-[var(--color-text-primary)]">
                 {formatAmount(totalBalance, defaultCurrency)}
               </span>
-              {balanceExpanded ? <ChevronUp size={14} className="text-[var(--color-text-tertiary)]" /> : <ChevronDown size={14} className="text-[var(--color-text-tertiary)]" />}
+              {balanceExpanded ? <ChevronUp size={12} className="text-[var(--color-text-tertiary)]" /> : <ChevronDown size={12} className="text-[var(--color-text-tertiary)]" />}
             </div>
           </button>
 
@@ -453,6 +427,32 @@ export const BudgetOverviewView: React.FC = () => {
               </motion.div>
             )}
           </AnimatePresence>
+        </motion.div>
+
+        {/* ═══ SPENDING SECTION ═══ */}
+        <motion.div
+          variants={variants.listItem}
+          transition={transitions.smooth}
+          className="p-4 rounded-xl bg-[var(--color-bg-elevated)] border border-[var(--color-border-primary)]"
+        >
+          <div className="flex items-center gap-2 mb-3">
+            <TrendingDown size={14} className="text-[var(--color-text-tertiary)]" />
+            <p className="text-xs font-medium text-[var(--color-text-tertiary)] uppercase tracking-wide">Траты</p>
+          </div>
+          <div className="grid grid-cols-3 gap-3">
+            <div>
+              <p className="text-[10px] text-[var(--color-text-tertiary)] mb-0.5">Сегодня</p>
+              <p className="text-lg font-bold text-[var(--color-text-primary)]">{formatAmount(spentToday, defaultCurrency)}</p>
+            </div>
+            <div>
+              <p className="text-[10px] text-[var(--color-text-tertiary)] mb-0.5">Неделя</p>
+              <p className="text-lg font-bold text-[var(--color-text-primary)]">{formatAmount(spentThisWeek, defaultCurrency)}</p>
+            </div>
+            <div>
+              <p className="text-[10px] text-[var(--color-text-tertiary)] mb-0.5">Месяц</p>
+              <p className="text-lg font-bold text-[var(--color-text-primary)]">{formatAmount(spentThisMonth, defaultCurrency)}</p>
+            </div>
+          </div>
         </motion.div>
 
         {/* ═══ RECURRING EXPENSES ═══ */}

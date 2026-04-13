@@ -495,12 +495,13 @@ class BudgetDatabaseService {
 
   // ─── Recurring Expenses ────────────────────────────────
 
-  async getRecurringExpenses(coupleId: string): Promise<RecurringExpense[]> {
+  async getRecurringExpenses(coupleId: string, context: BudgetContext): Promise<RecurringExpense[]> {
     try {
       const { data, error } = await supabase
         .from('recurring_expenses')
         .select('*')
         .eq('couple_id', coupleId)
+        .eq('context', context)
         .eq('is_active', true)
         .order('day_of_month')
 
@@ -514,7 +515,7 @@ class BudgetDatabaseService {
 
   async addRecurringExpense(
     coupleId: string,
-    params: { name: string; emoji: string; amount: number; currency: Currency; day_of_month: number; type?: RecurringExpenseType; category_id?: string | null }
+    params: { name: string; emoji: string; amount: number; currency: Currency; day_of_month: number; type?: RecurringExpenseType; context?: BudgetContext; category_id?: string | null }
   ): Promise<RecurringExpense | null> {
     const userId = this.getCurrentUserId()
     if (!userId) return null
@@ -556,8 +557,7 @@ class BudgetDatabaseService {
 
   async markExpensePaid(
     expense: RecurringExpense,
-    coupleId: string,
-    context: BudgetContext
+    coupleId: string
   ): Promise<Transaction | null> {
     const userId = this.getCurrentUserId()
     if (!userId) return null
@@ -565,22 +565,26 @@ class BudgetDatabaseService {
     const today = new Date()
     const date = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`
 
+    const row: Record<string, unknown> = {
+      couple_id: coupleId,
+      user_id: userId,
+      amount: expense.amount,
+      currency: expense.currency,
+      context: expense.context,
+      type: 'shared' as TransactionType,
+      description: expense.name,
+      date,
+      recurring_expense_id: expense.id,
+    }
+    if (expense.category_id) {
+      row.category_id = expense.category_id
+    }
+
     try {
       const { data, error } = await supabase
         .from('transactions')
-        .insert([{
-          couple_id: coupleId,
-          user_id: userId,
-          category_id: expense.category_id,
-          amount: expense.amount,
-          currency: expense.currency,
-          context,
-          type: 'shared' as TransactionType,
-          description: expense.name,
-          date,
-          recurring_expense_id: expense.id,
-        }])
-        .select('*, category:budget_categories(*)')
+        .insert([row])
+        .select('*')
         .single()
 
       if (error) throw new Error(`markExpensePaid failed: ${error.message}`)

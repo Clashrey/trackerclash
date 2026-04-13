@@ -110,6 +110,7 @@ export interface RecurringExpense {
   currency: Currency
   day_of_month: number // 1-31
   type: RecurringExpenseType
+  context: BudgetContext
   category_id: string | null
   is_active: boolean
   created_at: string

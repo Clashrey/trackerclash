@@ -1,4 +1,4 @@
-import React, { useCallback, useState } from 'react'
+import { useCallback, useState } from 'react'
 import { AnimatePresence } from 'framer-motion'
 import { useAppStore } from '@/store'
 import { useDatabase } from '@/hooks/useDatabase'
@@ -6,7 +6,6 @@ import { TaskItem } from '@/components/TaskItem'
 import { AddTaskForm } from '@/components/AddTaskForm'
 import { DatePickerModal } from '@/components/ui/DatePickerModal'
 import { EmptyState } from '@/components/ui/EmptyState'
-import { TaskCategory } from '@/types'
 
 interface ListViewProps {
   category: 'tasks' | 'ideas'

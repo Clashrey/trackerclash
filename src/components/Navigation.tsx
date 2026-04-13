@@ -1,4 +1,3 @@
-import React from 'react'
 import { motion } from 'framer-motion'
 import { Moon, Sun, LogOut, Search } from 'lucide-react'
 import { useAuth } from '../hooks/useAuth'

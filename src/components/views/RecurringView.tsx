@@ -40,7 +40,6 @@ export const RecurringView: React.FC = () => {
     const maxOrder = Math.max(...sortedTasks.map(t => ('order_index' in t ? t.order_index ?? 0 : 0)), -1)
 
     await addRecurringTask({
-      user_id: userId,
       title: newTask.title.trim(),
       frequency: newTask.frequency,
       days_of_week: newTask.frequency === 'weekly' ? newTask.days_of_week : undefined,

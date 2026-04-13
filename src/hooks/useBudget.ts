@@ -93,7 +93,7 @@ export function useBudget() {
       })
       setTransactions(transactions)
     } catch (error) {
-
+      console.error('reloadTransactions failed:', error)
     }
   }, [setTransactions])
 
@@ -105,7 +105,7 @@ export function useBudget() {
       const categories = await budgetDatabaseService.getCategories(couple.id, budgetContext)
       setBudgetCategories(categories)
     } catch (error) {
-
+      console.error('reloadCategories failed:', error)
     }
   }, [setBudgetCategories])
 
@@ -117,7 +117,7 @@ export function useBudget() {
       const limits = await budgetDatabaseService.getBudgetLimits(couple.id, budgetSelectedMonth)
       setBudgetLimits(limits)
     } catch (error) {
-
+      console.error('reloadLimits failed:', error)
     }
   }, [setBudgetLimits])
 

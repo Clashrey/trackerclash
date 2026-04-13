@@ -1,13 +1,12 @@
-import React, { useState } from 'react'
+import { useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Plus } from 'lucide-react'
 import { useAppStore } from '@/store'
 import { useDatabase } from '@/hooks/useDatabase'
-import { TaskCategory } from '@/types'
-import { transitions, variants } from '@/lib/animations'
+import { transitions } from '@/lib/animations'
 
 interface AddTaskFormProps {
-  category: TaskCategory
+  category: 'today' | 'tasks' | 'ideas'
   date?: Date
   placeholder?: string
   className?: string
@@ -44,11 +43,10 @@ export const AddTaskForm: React.FC<AddTaskFormProps> = ({
       : -1
 
     await addTask({
-      user_id: userId,
       title: title.trim(),
-      category: category === 'today' ? 'today' : category,
+      category: category,
       completed: false,
-      date: taskDate,
+      date: taskDate || '',
       order_index: maxOrderIndex + 1,
     })
 

@@ -1,4 +1,4 @@
-import React, { useMemo } from 'react'
+import { useMemo } from 'react'
 import { BarChart3 } from 'lucide-react'
 import { useAppStore } from '../../store'
 import { EmptyState } from '../ui/EmptyState'
@@ -115,7 +115,7 @@ export function AnalyticsView() {
     return {
       averageCompletionRate,
       weeklyCompletionRates: weeklyRates,
-      mostFailedRecurringTask: mostFailedRecurringTask?.failureCount > 0 ? mostFailedRecurringTask : null
+      mostFailedRecurringTask: mostFailedRecurringTask && mostFailedRecurringTask.failureCount > 0 ? mostFailedRecurringTask : null
     }
   }, [tasks, recurringTasks, taskCompletions])
 

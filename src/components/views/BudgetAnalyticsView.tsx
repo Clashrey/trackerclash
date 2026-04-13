@@ -128,7 +128,7 @@ export const BudgetAnalyticsView: React.FC = () => {
       totals[t.category_id] = (totals[t.category_id] || 0) + convertAmount(Number(t.amount), t.currency, defaultCurrency, exchangeRates)
     }
     return totals
-  }, [prevMonthTransactions])
+  }, [prevMonthTransactions, defaultCurrency, exchangeRates])
 
   const categoryData = useMemo((): CategoryDataItem[] => {
     const items = budgetCategories

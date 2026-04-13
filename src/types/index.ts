@@ -26,8 +26,9 @@ export interface RecurringTask {
   id: string
   user_id: string
   title: string
-  frequency: 'daily' | 'weekly'
+  frequency: 'daily' | 'weekly' | 'custom'
   days_of_week?: number[] // 0-6, where 0 is Sunday
+  order_index?: number
   created_at: string
   updated_at: string
 }

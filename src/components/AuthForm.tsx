@@ -1,15 +1,12 @@
-import React, { useState } from 'react'
+import { useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Key, Copy, Eye, EyeOff, Plus, LogIn, CheckCircle2, AlertCircle } from 'lucide-react'
 import { LoadingSpinner } from './ui/LoadingSpinner'
 import { supabase, generateApiKey, validateApiKey } from '@/lib/supabase'
-import { useAppStore } from '@/store'
 import { transitions } from '@/lib/animations'
 
 // Instead of window.location.reload(), we set auth state directly
 function useLoginCallback() {
-  const { setUserId } = useAppStore()
-
   return async (apiKeyValue: string): Promise<{ success: boolean; error?: string }> => {
     if (!validateApiKey(apiKeyValue)) {
       return { success: false, error: 'Неверный формат API-ключа. Ключ должен начинаться с "tk_"' }

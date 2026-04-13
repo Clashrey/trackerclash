@@ -1,6 +1,6 @@
-import React, { useState, useRef, useEffect } from 'react'
+import { useState, useRef, useEffect } from 'react'
 import { AnimatePresence, motion } from 'framer-motion'
-import { Check, X, ChevronUp, ChevronDown, ChevronRight, Calendar, GripVertical } from 'lucide-react'
+import { Check, X, ChevronUp, ChevronDown, ChevronRight, Calendar } from 'lucide-react'
 import { Task, RecurringTask, Subtask } from '@/types'
 import { SubtaskList } from './SubtaskList'
 import { transitions } from '@/lib/animations'

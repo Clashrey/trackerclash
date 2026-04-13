@@ -1,4 +1,4 @@
-import React, { useCallback, useMemo, useState } from 'react'
+import { useCallback, useMemo, useState } from 'react'
 import { CalendarCheck, Sparkles, RefreshCw, Lightbulb } from 'lucide-react'
 import { useAppStore } from '../../store'
 import { useDatabase } from '../../hooks/useDatabase'
@@ -31,8 +31,8 @@ export function TodayView() {
       return false
     })
     .sort((a, b) => {
-      const aOrder = 'order_index' in a ? a.order_index : 0
-      const bOrder = 'order_index' in b ? b.order_index : 0
+      const aOrder = a.order_index ?? 0
+      const bOrder = b.order_index ?? 0
       return aOrder - bOrder
     })
     .map(rt => ({

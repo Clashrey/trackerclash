@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Toaster } from 'sonner'
 import { useAuth } from './hooks/useAuth'
 import { useDatabase } from './hooks/useDatabase'

@@ -264,8 +264,8 @@ export const BudgetOverviewView: React.FC = () => {
   const subscriptions = useMemo(() => recurringExpenses.filter(e => e.type === 'subscription'), [recurringExpenses])
 
   const totalRecurring = useMemo(() =>
-    recurringExpenses.reduce((sum, e) => sum + Number(e.amount), 0),
-    [recurringExpenses])
+    recurringExpenses.reduce((sum, e) => sum + convertAmount(Number(e.amount), e.currency, defaultCurrency, exchangeRates), 0),
+    [recurringExpenses, defaultCurrency, exchangeRates])
 
   const todayDay = new Date().getDate()
 

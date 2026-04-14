@@ -564,8 +564,13 @@ class BudgetDatabaseService {
     const userId = this.getCurrentUserId()
     if (!userId) return null
 
+    // Use the expense's scheduled day in the current month, clamped to last day
     const today = new Date()
-    const date = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`
+    const year = today.getFullYear()
+    const month = today.getMonth()
+    const lastDay = new Date(year, month + 1, 0).getDate()
+    const day = Math.min(expense.day_of_month, lastDay)
+    const date = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`
 
     const row: Record<string, unknown> = {
       couple_id: coupleId,

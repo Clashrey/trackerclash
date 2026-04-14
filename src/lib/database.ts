@@ -6,7 +6,7 @@ export interface Task {
   title: string
   completed: boolean
   category: 'today' | 'tasks' | 'ideas'
-  date: string
+  date?: string
   order_index: number
   source_task_id?: string | null
   user_id: string

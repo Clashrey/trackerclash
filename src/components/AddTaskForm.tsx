@@ -42,13 +42,14 @@ export const AddTaskForm: React.FC<AddTaskFormProps> = ({
       ? Math.max(...categoryTasks.map(t => t.order_index))
       : -1
 
-    await addTask({
+    const taskPayload: Omit<import('@/types').Task, 'id' | 'user_id' | 'created_at' | 'updated_at'> = {
       title: title.trim(),
       category: category,
       completed: false,
-      date: taskDate || '',
       order_index: maxOrderIndex + 1,
-    })
+    }
+    if (taskDate) taskPayload.date = taskDate
+    await addTask(taskPayload)
 
     // Serial input mode: stay open, clear field, keep focus
     setTitle('')
